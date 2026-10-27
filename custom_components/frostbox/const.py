@@ -90,6 +90,11 @@ VIRTUAL_SWITCHES: Final = {
 EVENT_DINNER_READY: Final = f"{DOMAIN}_dinner_ready"
 EVENT_DOOR: Final = f"{DOMAIN}_door"
 EVENT_INVENTORY: Final = f"{DOMAIN}_inventory_changed"
+EVENT_SCREENSAVER: Final = f"{DOMAIN}_screensaver"
+
+# Fridge-screen kiosk and screensavers (served from ./www)
+STATIC_URL: Final = "/frostbox"
+SCREENSAVERS: Final = ("Aquarium", "Matrix", "Cycle", "Off")
 
 LOCATIONS: Final = ("fridge", "freezer", "flexzone", "door", "pantry")
 

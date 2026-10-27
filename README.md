@@ -38,7 +38,7 @@ and on the Family Hub screen itself.
 | **Recipes** | `frostbox.suggest_recipes` ranks recipes by what expires first (TheMealDB, or any HA AI conversation agent you pick) |
 | **Modes** | Party (Power Cool + Power Freeze + FlexZone → beverage, auto-off and restores the drawer), Grocery (pre-chill), Vacation. Each has a timer |
 | **Cameras** | Inside-the-fridge camera(s) that **stream to Apple Home** like your other cameras (live view + snapshots + door-opening "motion") |
-| **Fridge screen** | Optional SmartThings virtual switches *Frostbox Party Mode / Grocery Mode / Vacation Mode / Dinner Ready*. Tap them on the Family Hub or say "Hi Bixby, turn on Frostbox Party Mode", and HA reacts. Plus a full HA dashboard in the Family Hub browser |
+| **Fridge screen** | Kiosk page with **Aquarium** and **Matrix** screensavers that show fridge info and wake when a door opens. Optional SmartThings virtual switches *Frostbox Party Mode / Grocery Mode / Vacation Mode / Dinner Ready*. Tap them on the Family Hub or say "Hi Bixby, turn on Frostbox Party Mode", and HA reacts. Plus a full HA dashboard in the Family Hub browser |
 | **Voice** | Assist sentences (also through Siri): "do we have eggs?", "what's expiring?", "add yogurt to the fridge", "we're out of milk", "what should I cook?", "start party mode", "dinner's ready" |
 | **Plex** | Kitchen now-playing on the fridge screen, pause Plex while the fridge is held open, "Dinner's ready" turns on the TV and resumes Plex |
 | **Power users** | `frostbox.send_command` (any SmartThings command), `frostbox.dump_capabilities`, a disabled-by-default diagnostic sensor for **every** attribute the fridge reports |
@@ -117,8 +117,32 @@ Until either is set, the camera shows a placeholder and its `setup` attribute sa
 
 ## Fridge screen kiosk
 
-Open `http://homeassistant.local:8123/dashboard-frostbox` in the Family Hub's browser. To skip the login on the
-fridge, give it a dedicated HA user and trust only the fridge's IP:
+Open this in the Family Hub's browser and bookmark it:
+
+```
+http://homeassistant.local:8123/frostbox/kiosk.html?dashboard=/dashboard-frostbox/kitchen
+```
+
+It shows the Frostbox dashboard full-screen and switches to a **screensaver** after 3 minutes without a touch.
+Tapping the screen, or opening any fridge door, wakes it straight back to the dashboard.
+
+| Screensaver | |
+| --- | --- |
+| **Aquarium** | Clownfish, tangs, angelfish, neon tetras and a jellyfish, with swaying seaweed, rising bubbles and light rays. The tank lights dim at night, and the fish dart when someone opens the fridge |
+| **Matrix** | Green code rain. Now and then a column spells something that's in your fridge |
+| **Cycle** | Alternates between the two every 10 minutes |
+
+Both screensavers show the time, fridge and freezer temperatures and what to use first. They also flag an open
+door or a food-safety problem, and the info drifts slowly so nothing burns into the panel.
+
+- **Pick one** with the `select.family_hub_screensaver` entity (Aquarium / Matrix / Cycle / Off). You can change it
+  from your phone, an automation (Matrix at night?), or Apple Home.
+- **Start one now** with `button.family_hub_start_screensaver`, or fire the event
+  `frostbox_screensaver` (`{"action": "start", "saver": "matrix"}` or `{"action": "stop"}`).
+- **URL options:** `idle=300` (seconds), `saver=matrix` (ignore the entity), `device=family_hub` (entity prefix).
+- **Preview** either one on any screen: `/frostbox/aquarium.html` or `/frostbox/matrix.html`.
+
+To skip the login on the fridge, give it a dedicated HA user and trust only the fridge's IP:
 
 ```yaml
 homeassistant:
@@ -179,10 +203,11 @@ Events: `frostbox_door` (open/close with duration), `frostbox_dinner_ready`, `fr
 
 ## What's verified and what isn't
 
-- ✅ **Unit and integration tests (46)** run against Home Assistant 2026.2 with a simulated 4-door Family Hub:
+- ✅ **Unit and integration tests (48)** run against Home Assistant 2026.2 with a simulated 4-door Family Hub:
   setup, every platform, commands, door ajar timing, party mode expiry/restore, outage → unsafe, inventory, barcode
   lookup, to-do completion, fridge-screen switch sync, the MJPEG feed, the config flow, every blueprint and
   package through HA's own validators, and voice commands end to end through Assist.
+- ✅ The kiosk and both screensavers were run in Chromium at 1080×1920 and 1920×1080 against a mock dashboard (idle → screensaver, tap to wake, door-open wake, switching from the entity, alerts, no JS errors). The Family Hub's own browser hasn't been tested yet.
 - ✅ The HomeKit camera input format was checked against real ffmpeg (6 s of wall time → 6.0 s of H.264 at the
   expected frame rate) and against HA's HomeKit and ha-ffmpeg source.
 - ⚠️ The **simulated** device uses Samsung capability names known from other Family Hub models. The real

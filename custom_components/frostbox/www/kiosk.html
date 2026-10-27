@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frostbox</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #111; }
+  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+  #saver { opacity: 0; pointer-events: none; transition: opacity 1.2s ease; background: #000; }
+  #saver.on { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+<!--
+  Frostbox kiosk for the Family Hub browser.
+  Shows a Home Assistant dashboard and switches to a screensaver after a period
+  without touches. The screensaver choice comes from the Frostbox "Screensaver"
+  select entity, so it can be changed from your phone, Siri or an automation.
+
+  URL parameters (all optional):
+    dashboard=/dashboard-frostbox/kitchen   dashboard path to show
+    idle=180                                seconds without a touch before the screensaver
+    saver=matrix|aquarium|cycle|off         override the Screensaver entity
+    device=family_hub                       entity id prefix of the fridge
+-->
+<iframe id="dash" title="Dashboard"></iframe>
+<iframe id="saver" title="Screensaver"></iframe>
+<script>
+(() => {
+  "use strict";
+  const q = new URLSearchParams(location.search);
+  const DASHBOARD = q.get("dashboard") || "/dashboard-frostbox/kitchen";
+  const IDLE_MS = Math.max(15, Number(q.get("idle")) || 180) * 1000;
+  const PREFIX = q.get("device") || "family_hub";
+  const CYCLE_MS = 10 * 60 * 1000;
+  const SAVERS = ["matrix", "aquarium"];
+  const base = location.pathname.replace(/[^/]*$/, "");
+
+  const dash = document.getElementById("dash");
+  const saver = document.getElementById("saver");
+  dash.src = DASHBOARD;
+
+  let lastActivity = Date.now();
+  let active = null; // name of the running screensaver
+  let cycleIndex = 0;
+  let cycleAt = 0;
+  let doorWasOpen = false;
+
+  function hass() {
+    try {
+      return dash.contentDocument.querySelector("home-assistant").hass;
+    } catch (e) {
+      return null; // dashboard still loading (or not logged in yet)
+    }
+  }
+  const state = (h, id) => (h && h.states[id] ? h.states[id] : null);
+
+  function choice(h) {
+    const forced = q.get("saver");
+    if (forced) return forced.toLowerCase();
+    const sel = state(h, `select.${PREFIX}_screensaver`);
+    return sel ? sel.state.toLowerCase() : "aquarium";
+  }
+
+  function fmtTemp(s) {
+    if (!s || isNaN(parseFloat(s.state))) return null;
+    return `${Math.round(parseFloat(s.state))}${s.attributes.unit_of_measurement || ""}`;
+  }
+
+  function payload(h) {
+    const expiring = (state(h, `sensor.${PREFIX}_expiring_soon`)?.attributes.items || []).map((i) => i.name);
+    const inventory = (state(h, `sensor.${PREFIX}_inventory`)?.attributes.items || []).map((i) => i.name);
+    const ajar = state(h, `binary_sensor.${PREFIX}_door_ajar`)?.state === "on";
+    const safety = state(h, `sensor.${PREFIX}_food_safety`);
+    let alert = null;
+    if (ajar) alert = "Fridge door is open";
+    else if (safety && (safety.state === "unsafe" || safety.state === "warning")) alert = safety.attributes.advice;
+    return {
+      fridge: fmtTemp(state(h, `sensor.${PREFIX}_fridge_temperature`)),
+      freezer: fmtTemp(state(h, `sensor.${PREFIX}_freezer_temperature`)),
+      expiring,
+      words: inventory.concat(["frostbox"]),
+      doorOpen: state(h, `binary_sensor.${PREFIX}_any_door_open`)?.state === "on",
+      alert,
+    };
+  }
+
+  function start(name) {
+    if (active === name) return;
+    active = name;
+    saver.src = `${base}${name}.html`;
+    saver.classList.add("on");
+  }
+
+  function stop() {
+    lastActivity = Date.now();
+    if (!active) return;
+    active = null;
+    saver.classList.remove("on");
+    // Unload the animation so the fridge's GPU can rest.
+    setTimeout(() => { if (!active) saver.removeAttribute("src"); }, 1300);
+  }
+
+  function activity() {
+    lastActivity = Date.now();
+    if (active) stop();
+  }
+
+  // Touches inside the dashboard iframe (same origin, so we can listen in).
+  function hookDashboard() {
+    try {
+      const doc = dash.contentDocument;
+      ["pointerdown", "touchstart", "keydown", "wheel"].forEach((e) =>
+        doc.addEventListener(e, activity, { passive: true, capture: true })
+      );
+    } catch (e) { /* not ready */ }
+  }
+  dash.addEventListener("load", hookDashboard);
+  ["pointerdown", "touchstart", "keydown"].forEach((e) => addEventListener(e, activity, { passive: true }));
+  addEventListener("message", (ev) => {
+    if (ev.origin === location.origin && ev.data && ev.data.type === "frostbox-wake") activity();
+  });
+
+  let subscribed = false;
+  function subscribe(h) {
+    // "Start screensaver" button / automations fire frostbox_screensaver.
+    if (subscribed || !h || !h.connection) return;
+    subscribed = true;
+    h.connection.subscribeEvents((ev) => {
+      const d = ev.data || {};
+      if (d.action === "stop") return stop();
+      const want = d.saver || choice(hass());
+      start(SAVERS.includes(want) ? want : SAVERS[0]);
+    }, "frostbox_screensaver").catch(() => { subscribed = false; });
+  }
+
+  function loop() {
+    const h = hass();
+    subscribe(h);
+    const now = Date.now();
+    const doorOpen = state(h, `binary_sensor.${PREFIX}_any_door_open`)?.state === "on";
+    // Someone opened the fridge: they're standing right here, so wake up.
+    if (doorOpen && !doorWasOpen) activity();
+    doorWasOpen = doorOpen;
+
+    const want = choice(h);
+    if (!active && want !== "off" && now - lastActivity > IDLE_MS) {
+      if (want === "cycle") {
+        start(SAVERS[cycleIndex % SAVERS.length]);
+        cycleAt = now;
+      } else {
+        start(SAVERS.includes(want) ? want : "aquarium");
+      }
+    } else if (active && want === "cycle" && now - cycleAt > CYCLE_MS) {
+      cycleIndex++;
+      cycleAt = now;
+      active = null;
+      start(SAVERS[cycleIndex % SAVERS.length]);
+    } else if (active && want !== "cycle" && want !== "off" && SAVERS.includes(want) && want !== active) {
+      start(want); // changed from the phone while running
+    } else if (active && want === "off") {
+      stop();
+    }
+
+    if (active && saver.contentWindow) {
+      saver.contentWindow.postMessage({ type: "frostbox", payload: payload(h) }, location.origin);
+    }
+  }
+  setInterval(loop, 1000);
+})();
+</script>
+</body>
+</html>

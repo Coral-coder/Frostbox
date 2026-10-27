@@ -104,6 +104,21 @@ views:
             entity: switch.family_hub_ice_maker
             name: Ice
             vertical: true
+          - type: tile
+            entity: select.family_hub_screensaver
+            name: Screensaver
+            features:
+              - type: select-options
+          - type: button
+            entity: button.family_hub_start_screensaver
+            name: Screensaver now
+            icon: mdi:fishbowl
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.family_hub_start_screensaver
           - type: button
             entity: button.family_hub_dinner_ready
             name: Dinner's ready!

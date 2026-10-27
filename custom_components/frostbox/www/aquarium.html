@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frostbox · Aquarium</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #031a2c; overflow: hidden; cursor: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #card {
+    position: fixed; left: 6vmin; bottom: 7vmin; pointer-events: none;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; color: #eaf8ff;
+    background: rgba(4, 28, 48, 0.55); border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 3vmin; padding: 2.4vmin 3.4vmin; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 1vmin 4vmin rgba(0, 0, 0, 0.25); transition: left 5s ease, bottom 5s ease;
+    min-width: 34vmin;
+  }
+  #time { font-size: 11vmin; font-weight: 200; line-height: 1; letter-spacing: -0.02em; }
+  #date { font-size: 2.6vmin; opacity: 0.8; margin-top: 0.8vmin; }
+  #temps { display: flex; gap: 3vmin; margin-top: 2vmin; font-size: 2.8vmin; }
+  #temps span b { font-weight: 600; }
+  #soon { font-size: 2.3vmin; margin-top: 1.4vmin; opacity: 0.9; max-width: 60vmin; }
+  #alert { display: none; margin-top: 1.4vmin; font-size: 2.6vmin; font-weight: 600; color: #ffd2d2;
+           background: rgba(255, 60, 60, 0.35); border-radius: 1.4vmin; padding: 0.8vmin 1.4vmin; }
+</style>
+</head>
+<body>
+<canvas id="tank"></canvas>
+<div id="card">
+  <div id="time">--:--</div>
+  <div id="date"></div>
+  <div id="temps"></div>
+  <div id="soon"></div>
+  <div id="alert"></div>
+</div>
+<script>
+(() => {
+  "use strict";
+  const canvas = document.getElementById("tank");
+  const ctx = canvas.getContext("2d");
+  let W, H, dpr, sandY;
+  let fish = [], weeds = [], bubbles = [], pebbles = [], jelly;
+  let data = {}, startle = 0, lastDoor = false;
+
+  const SPECIES = [
+    { name: "clown", body: "#ff7a1a", belly: "#ffb070", fin: "#e85d00", stripes: "#ffffff", len: 0.07 },
+    { name: "tang", body: "#1f6fff", belly: "#3d8bff", fin: "#ffd21f", stripes: null, len: 0.085 },
+    { name: "yellow", body: "#ffd51f", belly: "#fff07a", fin: "#ffc400", stripes: null, len: 0.065 },
+    { name: "neon", body: "#22d3ee", belly: "#ff3b6b", fin: "#9be7ff", stripes: null, len: 0.04 },
+    { name: "angel", body: "#e6e6f0", belly: "#ffffff", fin: "#2b2b3a", stripes: "#2b2b3a", len: 0.075, tall: true },
+  ];
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = canvas.width = innerWidth * dpr;
+    H = canvas.height = innerHeight * dpr;
+    sandY = H * 0.86;
+    const m = Math.min(W, H);
+    fish = [];
+    const count = Math.round(Math.max(9, Math.min(18, (W * H) / (m * m) * 9)));
+    for (let i = 0; i < count; i++) {
+      const sp = SPECIES[i % SPECIES.length];
+      const depth = rand(0.55, 1);
+      fish.push({
+        sp, depth,
+        size: sp.len * m * depth * rand(0.85, 1.15),
+        x: rand(0, W), y: rand(H * 0.12, sandY - H * 0.08),
+        dir: Math.random() < 0.5 ? -1 : 1,
+        speed: rand(0.5, 1.2) * m / 900,
+        phase: rand(0, Math.PI * 2),
+        targetY: rand(H * 0.12, sandY - H * 0.08),
+      });
+    }
+    fish.sort((a, b) => a.depth - b.depth);
+    weeds = [];
+    for (let x = rand(0, W * 0.05); x < W; x += rand(W * 0.04, W * 0.11)) {
+      weeds.push({ x, h: rand(H * 0.12, H * 0.38), w: rand(m * 0.012, m * 0.024), phase: rand(0, 6), hue: rand(110, 160) });
+    }
+    pebbles = Array.from({ length: Math.round(W / (m * 0.02)) }, () => ({
+      x: rand(0, W), y: rand(sandY + H * 0.02, H), r: rand(m * 0.004, m * 0.014), shade: rand(55, 80),
+    }));
+    jelly = { x: W * rand(0.2, 0.8), y: H * 0.3, phase: 0, size: m * 0.05 };
+    bubbles = [];
+  }
+
+  // Lights follow the time of day: bright by day, moonlit at night.
+  function daylight() {
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    if (h >= 8 && h < 19) return 1;
+    if (h >= 22 || h < 6) return 0.35;
+    return h < 8 ? 0.35 + (h - 6) / 2 * 0.65 : 1 - (h - 19) / 3 * 0.65;
+  }
+
+  function drawWater(t, light) {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `hsl(195, 80%, ${12 + 30 * light}%)`);
+    g.addColorStop(0.55, `hsl(205, 85%, ${8 + 18 * light}%)`);
+    g.addColorStop(1, `hsl(215, 80%, ${4 + 8 * light}%)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // Light rays
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 6; i++) {
+      const x = ((i / 6) * W + Math.sin(t / 7000 + i) * W * 0.06) % W;
+      const w = W * (0.05 + 0.03 * Math.sin(t / 5000 + i * 2));
+      const ray = ctx.createLinearGradient(0, 0, 0, sandY);
+      ray.addColorStop(0, `rgba(180, 240, 255, ${0.10 * light})`);
+      ray.addColorStop(1, "rgba(180, 240, 255, 0)");
+      ctx.fillStyle = ray;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + w, 0);
+      ctx.lineTo(x + w * 2.6 - W * 0.05, sandY);
+      ctx.lineTo(x + w * 0.4 - W * 0.05, sandY);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawSand(light) {
+    const g = ctx.createLinearGradient(0, sandY - H * 0.02, 0, H);
+    g.addColorStop(0, `hsl(40, 45%, ${30 + 30 * light}%)`);
+    g.addColorStop(1, `hsl(35, 35%, ${15 + 18 * light}%)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, sandY);
+    for (let x = 0; x <= W; x += W / 24) ctx.lineTo(x, sandY + Math.sin(x / W * 9) * H * 0.012);
+    ctx.lineTo(W, H);
+    ctx.lineTo(0, H);
+    ctx.fill();
+    for (const p of pebbles) {
+      ctx.fillStyle = `hsl(30, 15%, ${p.shade * (0.4 + 0.6 * light)}%)`;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.r * 1.4, p.r, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawWeed(wd, t, light) {
+    const segs = 8;
+    ctx.strokeStyle = `hsl(${wd.hue}, 55%, ${18 + 22 * light}%)`;
+    ctx.lineWidth = wd.w;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(wd.x, sandY + H * 0.01);
+    for (let i = 1; i <= segs; i++) {
+      const k = i / segs;
+      const sway = Math.sin(t / 1400 + wd.phase + k * 2.2) * k * k * H * 0.035;
+      ctx.lineTo(wd.x + sway, sandY - wd.h * k);
+    }
+    ctx.stroke();
+  }
+
+  function drawFish(f, t, light) {
+    const s = f.size;
+    const wag = Math.sin(t / 140 * (1 + startle * 2) + f.phase);
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    ctx.scale(f.dir, 1);
+    ctx.globalAlpha = 0.55 + 0.45 * f.depth;
+    const tall = f.sp.tall ? 1.6 : 1;
+    // tail
+    ctx.fillStyle = f.sp.fin;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.42, 0);
+    ctx.lineTo(-s * 0.78, -s * 0.28 * tall + wag * s * 0.08);
+    ctx.lineTo(-s * 0.7, wag * s * 0.05);
+    ctx.lineTo(-s * 0.78, s * 0.28 * tall + wag * s * 0.08);
+    ctx.closePath();
+    ctx.fill();
+    // dorsal + belly fins
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.15, -s * 0.18 * tall);
+    ctx.quadraticCurveTo(0, -s * 0.42 * tall, s * 0.15, -s * 0.16 * tall);
+    ctx.moveTo(-s * 0.1, s * 0.16 * tall);
+    ctx.quadraticCurveTo(0, s * 0.34 * tall, s * 0.1, s * 0.15 * tall);
+    ctx.fill();
+    // body
+    const g = ctx.createLinearGradient(0, -s * 0.22 * tall, 0, s * 0.22 * tall);
+    g.addColorStop(0, f.sp.body);
+    g.addColorStop(1, f.sp.belly);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 0.48, s * 0.22 * tall, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (f.sp.stripes) {
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = f.sp.stripes;
+      for (const sx of [0.22, -0.05, -0.3]) ctx.fillRect(s * sx, -s * 0.3 * tall, s * 0.07, s * 0.6 * tall);
+      ctx.restore();
+    }
+    if (f.sp.name === "neon") {
+      ctx.fillStyle = "#5ff3ff";
+      ctx.fillRect(-s * 0.4, -s * 0.05, s * 0.75, s * 0.06);
+    }
+    // eye
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(s * 0.3, -s * 0.05 * tall, s * 0.055, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#111";
+    ctx.beginPath();
+    ctx.arc(s * 0.315, -s * 0.05 * tall, s * 0.03, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function moveFish(f, dt) {
+    const speed = f.speed * (1 + startle * 3) * dt / 16;
+    f.x += f.dir * speed * f.depth;
+    f.y += (f.targetY - f.y) * 0.004 * dt / 16;
+    if (Math.random() < 0.003) f.targetY = rand(H * 0.12, sandY - f.size);
+    const margin = f.size * 1.2;
+    if (f.x > W + margin) { f.dir = -1; f.y = rand(H * 0.12, sandY - f.size); }
+    if (f.x < -margin) { f.dir = 1; f.y = rand(H * 0.12, sandY - f.size); }
+    if (Math.random() < 0.0008) f.dir *= -1;
+  }
+
+  function drawJelly(t, light) {
+    jelly.phase += 0.02;
+    jelly.y -= Math.max(0, Math.sin(jelly.phase)) * 0.6 * dpr;
+    jelly.y += 0.15 * dpr;
+    jelly.x += Math.sin(t / 6000) * 0.2 * dpr;
+    if (jelly.y < -jelly.size * 2) jelly.y = sandY;
+    const r = jelly.size * (1 + Math.sin(jelly.phase) * 0.08);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = `rgba(255, 150, 230, ${0.18 + 0.12 * (1 - light)})`;
+    ctx.beginPath();
+    ctx.ellipse(jelly.x, jelly.y, r, r * 0.7, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255, 170, 235, ${0.25 + 0.15 * (1 - light)})`;
+    ctx.lineWidth = dpr * 1.5;
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(jelly.x + i * r * 0.25, jelly.y);
+      for (let k = 1; k <= 6; k++) {
+        ctx.lineTo(jelly.x + i * r * 0.25 + Math.sin(t / 500 + k + i) * r * 0.12, jelly.y + k * r * 0.28);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawBubbles(dt) {
+    if (Math.random() < 0.25 + startle) {
+      const bx = W * 0.82;
+      bubbles.push({ x: bx + rand(-W * 0.01, W * 0.01), y: sandY, r: rand(2, 7) * dpr, wob: rand(0, 6) });
+    }
+    if (Math.random() < 0.02) bubbles.push({ x: rand(0, W), y: sandY, r: rand(2, 5) * dpr, wob: rand(0, 6) });
+    ctx.strokeStyle = "rgba(220, 245, 255, 0.55)";
+    ctx.fillStyle = "rgba(220, 245, 255, 0.12)";
+    ctx.lineWidth = dpr;
+    for (const b of bubbles) {
+      b.y -= (0.8 + b.r / dpr * 0.15) * dpr * dt / 16;
+      b.wob += 0.08;
+      const x = b.x + Math.sin(b.wob) * b.r;
+      ctx.beginPath();
+      ctx.arc(x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    bubbles = bubbles.filter((b) => b.y > -20);
+  }
+
+  let last = performance.now();
+  function frame(t) {
+    requestAnimationFrame(frame);
+    if (document.hidden) { last = t; return; }
+    const dt = Math.min(64, t - last);
+    if (dt < 1000 / 40) return; // ~40 fps is plenty for fish
+    last = t;
+    startle = Math.max(0, startle - dt / 2500);
+    const light = daylight();
+    drawWater(t, light);
+    weeds.forEach((w, i) => i % 2 === 0 && drawWeed(w, t, light));
+    drawJelly(t, light);
+    for (const f of fish) { moveFish(f, dt); drawFish(f, t, light); }
+    drawSand(light);
+    weeds.forEach((w, i) => i % 2 === 1 && drawWeed(w, t, light));
+    drawBubbles(dt);
+    if (light < 1) {
+      ctx.fillStyle = `rgba(0, 8, 30, ${(1 - light) * 0.45})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // ---- info card ------------------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+  function tick() {
+    const now = new Date();
+    $("time").textContent = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }).replace(/\s?[AP]M$/i, "");
+    $("date").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  }
+  function render() {
+    const temps = [];
+    if (data.fridge != null) temps.push(`<span>Fridge <b>${data.fridge}</b></span>`);
+    if (data.freezer != null) temps.push(`<span>Freezer <b>${data.freezer}</b></span>`);
+    $("temps").innerHTML = temps.join("");
+    $("soon").textContent = data.expiring && data.expiring.length ? `Use first: ${data.expiring.slice(0, 4).join(", ")}` : "";
+    $("alert").textContent = data.alert ? `⚠️ ${data.alert}` : "";
+    $("alert").style.display = data.alert ? "block" : "none";
+    if (data.doorOpen && !lastDoor) startle = 1; // the fish notice when someone opens the fridge
+    lastDoor = !!data.doorOpen;
+  }
+  function drift() {
+    $("card").style.left = `${4 + Math.random() * 40}vmin`;
+    $("card").style.bottom = `${5 + Math.random() * 30}vmin`;
+  }
+
+  window.addEventListener("message", (ev) => {
+    if (ev.origin !== location.origin || !ev.data || ev.data.type !== "frostbox") return;
+    data = ev.data.payload || {};
+    render();
+  });
+  ["pointerdown", "touchstart", "keydown"].forEach((e) =>
+    window.addEventListener(e, () => parent !== window && parent.postMessage({ type: "frostbox-wake" }, location.origin), { passive: true })
+  );
+
+  if (parent === window) {
+    data = { fridge: "37°F", freezer: "0°F", expiring: ["Strawberries", "Leftover lasagna"] };
+    render();
+  }
+
+  addEventListener("resize", resize);
+  resize();
+  tick();
+  setInterval(tick, 1000);
+  setInterval(drift, 90000);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frostbox · Matrix</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud {
+    position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%);
+    font-family: "Courier New", ui-monospace, monospace; color: #b6ffb6; text-align: center;
+    text-shadow: 0 0 6px #00ff66, 0 0 18px #00aa44; pointer-events: none;
+    background: rgba(0, 12, 0, 0.55); padding: 2.2vmin 4vmin; border: 1px solid rgba(0, 255, 102, 0.35);
+    transition: left 4s ease, top 4s ease, opacity 0.6s;
+  }
+  #time { font-size: 13vmin; letter-spacing: 0.06em; line-height: 1; }
+  #time small { font-size: 3.4vmin; margin-left: 1.2vmin; letter-spacing: 0.1em; }
+  #date { font-size: 3vmin; opacity: 0.8; margin-top: 1vmin; letter-spacing: 0.3em; text-transform: uppercase; }
+  #temps { font-size: 3.4vmin; margin-top: 2.4vmin; letter-spacing: 0.12em; }
+  #soon { font-size: 2.6vmin; margin-top: 1.6vmin; opacity: 0.85; max-width: 70vmin; }
+  #alert { font-size: 3.2vmin; margin-top: 1.6vmin; color: #ff5c5c; text-shadow: 0 0 8px #ff0000; display: none; }
+  .blink { animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div id="hud">
+  <div id="time">--:--</div>
+  <div id="date"></div>
+  <div id="temps"></div>
+  <div id="soon"></div>
+  <div id="alert"></div>
+</div>
+<script>
+(() => {
+  "use strict";
+  const canvas = document.getElementById("rain");
+  const ctx = canvas.getContext("2d");
+  const GLYPHS = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789ZXCVBNM<>*+=:".split("");
+  const FPS = 24;
+  let fontSize, cols, drops, words = [];
+  let data = {};
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
+    fontSize = Math.round(Math.max(16, Math.min(innerWidth, innerHeight) / 42) * dpr);
+    cols = Math.ceil(canvas.width / fontSize);
+    drops = Array.from({ length: cols }, () => newDrop(true));
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function newDrop(scatter) {
+    const rows = canvas.height / fontSize;
+    // Now and then a column spells something from the fridge.
+    const word = words.length && Math.random() < 0.06 ? words[Math.floor(Math.random() * words.length)] : null;
+    return {
+      y: scatter ? Math.random() * -rows : Math.random() * -20,
+      speed: 0.35 + Math.random() * 0.75,
+      word,
+      i: 0,
+    };
+  }
+
+  function glyphFor(drop) {
+    if (drop.word && drop.i < drop.word.length) {
+      return drop.word[drop.i++];
+    }
+    return GLYPHS[(Math.random() * GLYPHS.length) | 0];
+  }
+
+  let last = 0;
+  function frame(t) {
+    requestAnimationFrame(frame);
+    if (document.hidden || t - last < 1000 / FPS) return;
+    last = t;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.075)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = `${fontSize}px "MS Gothic", "Courier New", monospace`;
+    ctx.textBaseline = "top";
+    const rows = canvas.height / fontSize;
+    for (let c = 0; c < cols; c++) {
+      const d = drops[c];
+      const prev = Math.floor(d.y);
+      d.y += d.speed;
+      const row = Math.floor(d.y);
+      if (row !== prev && row >= 0) {
+        const x = c * fontSize;
+        // Re-tint the previous head green, then draw a bright new head.
+        ctx.fillStyle = "#000";
+        ctx.fillRect(x, (row - 1) * fontSize, fontSize, fontSize);
+        const spelled = d.word && d.i > 0 && d.i <= d.word.length;
+        ctx.fillStyle = spelled ? "#7dffb0" : "#00d455";
+        ctx.fillText(spelled ? d.word[d.i - 1] : glyphFor({}), x, (row - 1) * fontSize);
+        ctx.fillStyle = d.word && d.i < d.word.length ? "#ffffff" : "#d8ffe0";
+        ctx.shadowColor = "#00ff66";
+        ctx.shadowBlur = fontSize * 0.6;
+        ctx.fillText(glyphFor(d), x, row * fontSize);
+        ctx.shadowBlur = 0;
+      }
+      if (row > rows && Math.random() > 0.975) drops[c] = newDrop(false);
+    }
+  }
+
+  // ---- HUD ----------------------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function tick() {
+    const now = new Date();
+    let h = now.getHours();
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    $("time").innerHTML = `${h}:${pad(now.getMinutes())}<small>${ampm}</small>`;
+    $("date").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+  }
+
+  function render() {
+    const parts = [];
+    if (data.fridge != null) parts.push(`FRIDGE ${data.fridge}`);
+    if (data.freezer != null) parts.push(`FREEZER ${data.freezer}`);
+    $("temps").textContent = parts.join("   ");
+    $("soon").textContent = data.expiring && data.expiring.length ? `USE FIRST › ${data.expiring.slice(0, 4).join(" · ").toUpperCase()}` : "";
+    const alert = $("alert");
+    if (data.alert) {
+      alert.textContent = `⚠ ${data.alert.toUpperCase()}`;
+      alert.style.display = "block";
+      alert.className = "blink";
+    } else {
+      alert.style.display = "none";
+    }
+    words = (data.words || []).map((w) => w.toUpperCase().replace(/\s+/g, "_")).filter((w) => w.length > 1);
+  }
+
+  // Move the HUD a little every minute so nothing burns into the panel.
+  function drift() {
+    $("hud").style.left = `${35 + Math.random() * 30}%`;
+    $("hud").style.top = `${30 + Math.random() * 40}%`;
+  }
+
+  window.addEventListener("message", (ev) => {
+    if (ev.origin !== location.origin || !ev.data || ev.data.type !== "frostbox") return;
+    data = ev.data.payload || {};
+    render();
+  });
+  // Tapping anywhere wakes the kiosk.
+  ["pointerdown", "touchstart", "keydown"].forEach((e) =>
+    window.addEventListener(e, () => parent !== window && parent.postMessage({ type: "frostbox-wake" }, location.origin), { passive: true })
+  );
+
+  // Standalone preview (open matrix.html directly): fake some fridge data.
+  if (parent === window) {
+    data = { fridge: "37°F", freezer: "0°F", expiring: ["Strawberries", "Leftover lasagna"], words: ["milk", "eggs", "lasagna", "strawberries", "frostbox"] };
+    render();
+  }
+
+  addEventListener("resize", resize);
+  resize();
+  tick();
+  setInterval(tick, 1000);
+  setInterval(drift, 60000);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

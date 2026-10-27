@@ -7,7 +7,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import EVENT_DINNER_READY
+from .const import EVENT_DINNER_READY, EVENT_SCREENSAVER
 from .coordinator import FrostboxCoordinator
 from .entity import FrostboxEntity
 from .models import FrostboxConfigEntry
@@ -17,7 +17,12 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: FrostboxConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    entities: list[ButtonEntity] = [DinnerReady(coordinator), AckFoodSafety(coordinator), Refresh(coordinator)]
+    entities: list[ButtonEntity] = [
+        DinnerReady(coordinator),
+        AckFoodSafety(coordinator),
+        Refresh(coordinator),
+        StartScreensaver(coordinator),
+    ]
     if coordinator.data.components_with("custom.waterFilter", "waterFilterUsage"):
         entities.append(ResetWaterFilter(coordinator))
     async_add_entities(entities)
@@ -79,3 +84,20 @@ class Refresh(FrostboxEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self.coordinator.async_request_refresh()
+
+
+class StartScreensaver(FrostboxEntity, ButtonEntity):
+    """Tells the fridge kiosk page to start its screensaver right away."""
+
+    _attr_name = "Start screensaver"
+    _attr_icon = "mdi:fishbowl"
+
+    def __init__(self, coordinator: FrostboxCoordinator) -> None:
+        super().__init__(coordinator, "start_screensaver")
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    async def async_press(self) -> None:
+        self.hass.bus.async_fire(EVENT_SCREENSAVER, {"action": "start"})

@@ -1,11 +1,13 @@
-"""FlexZone drawer mode."""
+"""FlexZone drawer mode and the fridge-screen screensaver choice."""
 
 from __future__ import annotations
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 
+from .const import SCREENSAVERS
 from .coordinator import FrostboxCoordinator
 from .entity import FrostboxEntity
 from .models import FrostboxConfigEntry
@@ -18,11 +20,13 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: FrostboxConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    async_add_entities(
+    entities: list[SelectEntity] = [
         FridgeModeSelect(coordinator, c)
         for c in coordinator.data.components_with(CAP, "fridgeMode")
         if coordinator.data.fridge_modes(c)
-    )
+    ]
+    entities.append(ScreensaverSelect(coordinator))
+    async_add_entities(entities)
 
 
 def pretty_mode(mode: str) -> str:
@@ -59,3 +63,28 @@ class FridgeModeSelect(FrostboxEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         raw = next(m for m in self._modes if pretty_mode(m) == option)
         await self.coordinator.async_command(self._component, CAP, "setFridgeMode", [raw])
+
+
+class ScreensaverSelect(FrostboxEntity, SelectEntity, RestoreEntity):
+    """Which screensaver the fridge kiosk page shows when idle."""
+
+    _attr_name = "Screensaver"
+    _attr_icon = "mdi:fishbowl-outline"
+    _attr_options = list(SCREENSAVERS)
+
+    def __init__(self, coordinator: FrostboxCoordinator) -> None:
+        super().__init__(coordinator, "screensaver")
+        self._attr_current_option = SCREENSAVERS[0]
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if (last := await self.async_get_last_state()) and last.state in SCREENSAVERS:
+            self._attr_current_option = last.state
+
+    async def async_select_option(self, option: str) -> None:
+        self._attr_current_option = option
+        self.async_write_ha_state()

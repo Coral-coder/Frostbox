@@ -32,6 +32,7 @@ homekit:
         - switch.family_hub_grocery_mode
         - switch.family_hub_vacation_mode
         - button.family_hub_dinner_ready
+        - button.family_hub_start_screensaver
     entity_config:
       binary_sensor.family_hub_fridge_door:
         name: Fridge Door
@@ -59,6 +60,8 @@ homekit:
         name: Fridge Vacation Mode
       button.family_hub_dinner_ready:
         name: Dinner Ready
+      button.family_hub_start_screensaver:
+        name: Fridge Screensaver
 
   - name: Fridge Camera
     port: 21071

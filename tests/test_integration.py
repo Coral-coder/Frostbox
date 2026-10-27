@@ -232,3 +232,24 @@ async def test_fridge_screen_switches(
             "switch", "turn_off", {"entity_id": _eid(hass, "switch", "mode_party")}, blocking=True
         )
         assert fake_api.virtual[party_vs]["switch"] == "off"
+
+
+async def test_screensaver_entities_and_pages(hass: HomeAssistant, setup_fridge, hass_client_no_auth) -> None:
+    select = _eid(hass, "select", "screensaver")
+    assert hass.states.get(select).state == "Aquarium"
+    await hass.services.async_call("select", "select_option", {"entity_id": select, "option": "Matrix"}, blocking=True)
+    assert hass.states.get(select).state == "Matrix"
+
+    events = []
+    hass.bus.async_listen("frostbox_screensaver", events.append)
+    await hass.services.async_call(
+        "button", "press", {"entity_id": _eid(hass, "button", "start_screensaver")}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert events[0].data == {"action": "start"}
+
+    client = await hass_client_no_auth()
+    for page, marker in (("kiosk", "frostbox-wake"), ("matrix", "<canvas"), ("aquarium", "<canvas")):
+        resp = await client.get(f"/frostbox/{page}.html")
+        assert resp.status == 200, page
+        assert marker in await resp.text()

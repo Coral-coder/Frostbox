@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
@@ -13,7 +15,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .api import SmartThingsApi, SmartThingsAuthError, SmartThingsError
 from .auth import core_provider, pat_provider
-from .const import AUTH_CORE, CONF_AUTH_TYPE, CONF_CORE_ENTRY_ID, CONF_DEVICE_ID, CONF_TOKEN, DOMAIN
+from .const import AUTH_CORE, CONF_AUTH_TYPE, CONF_CORE_ENTRY_ID, CONF_DEVICE_ID, CONF_TOKEN, DOMAIN, STATIC_URL
 from .coordinator import FrostboxCoordinator
 from .inventory import Inventory
 from .mjpeg import MjpegView
@@ -39,6 +41,10 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.http.register_view(MjpegView())
+    # Kiosk page and screensavers for the Family Hub browser: /frostbox/kiosk.html
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(STATIC_URL, str(Path(__file__).parent / "www"), cache_headers=False)]
+    )
     await async_setup_services(hass)
     return True
 
