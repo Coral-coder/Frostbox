@@ -1,0 +1,121 @@
+blueprint:
+  name: Frostbox – Fridge door left open
+  description: >-
+    Push a notification when a fridge door is left open. If it is still open a
+    little later, flash lights and announce it on speakers (HomePods via AirPlay
+    work). Clears the notification when the door closes.
+  domain: automation
+  source_url: https://github.com/coral-coder/frostbox/blob/main/homeassistant/blueprints/automation/frostbox/door_ajar.yaml
+  input:
+    ajar_sensor:
+      name: Door ajar sensor
+      default: binary_sensor.family_hub_door_ajar
+      selector:
+        entity:
+          filter:
+            - integration: frostbox
+              domain: binary_sensor
+    notify_device:
+      name: Phone to notify
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+    escalate_after:
+      name: Escalate after
+      description: Extra time before lights and speakers kick in.
+      default: 2
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: min
+    flash_lights:
+      name: Lights to flash (optional)
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
+    tts_engine:
+      name: Text-to-speech engine (optional)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: tts
+    speakers:
+      name: Speakers to announce on (optional)
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: media_player
+
+mode: restart
+
+trigger:
+  - trigger: state
+    entity_id: !input ajar_sensor
+    to: "on"
+
+variables:
+  ajar_sensor: !input ajar_sensor
+  lights: !input flash_lights
+  tts_engine: !input tts_engine
+  speakers: !input speakers
+
+action:
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: "Fridge door open"
+    message: >-
+      {{ state_attr(ajar_sensor, 'open_doors') | join(', ') }} door has been open for
+      {{ (state_attr(ajar_sensor, 'open_seconds') | int(0) / 60) | round(1) }} min.
+    data:
+      tag: frostbox-door
+      push:
+        interruption-level: time-sensitive
+  - wait_for_trigger:
+      - trigger: state
+        entity_id: !input ajar_sensor
+        to: "off"
+    timeout:
+      minutes: !input escalate_after
+    continue_on_timeout: true
+  - if:
+      - condition: template
+        value_template: "{{ wait.trigger is none }}"
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ lights | count > 0 }}"
+        then:
+          - action: light.turn_on
+            target:
+              entity_id: "{{ lights }}"
+            data:
+              flash: long
+      - if:
+          - condition: template
+            value_template: "{{ tts_engine != '' and speakers | count > 0 }}"
+        then:
+          - action: tts.speak
+            target:
+              entity_id: "{{ tts_engine }}"
+            data:
+              media_player_entity_id: "{{ speakers }}"
+              message: "The fridge door is still open."
+      - wait_for_trigger:
+          - trigger: state
+            entity_id: !input ajar_sensor
+            to: "off"
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    message: clear_notification
+    data:
+      tag: frostbox-door

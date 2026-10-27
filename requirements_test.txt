@@ -1,0 +1,12 @@
+pytest-homeassistant-custom-component
+PyTurboJPEG
+ha-ffmpeg
+HAP-python
+pyqrcode
+base36
+pynacl
+mutagen
+pymicro-vad
+hassil
+home-assistant-intents
+ruff

@@ -1,0 +1,171 @@
+# Frostbox voice commands for Home Assistant Assist.
+# Works from the HA app, Assist satellites, and Siri ("Hey Siri, Assist" or a
+# Shortcut that runs the Home Assistant "Assist" action with dictated text).
+#
+# Every answer comes from a Frostbox action's `speech` response, so these work
+# no matter what your entity IDs are.
+
+automation:
+  - id: frostbox_assist_status
+    alias: "Frostbox · Assist · fridge status"
+    triggers:
+      - trigger: conversation
+        command:
+          - "how is the fridge"
+          - "is the fridge ok[ay]"
+          - "fridge status"
+          - "(what's|what is) the fridge temperature"
+    actions:
+      - action: frostbox.get_status
+        response_variable: fridge
+      - set_conversation_response: "{{ fridge.speech }}"
+
+  - id: frostbox_assist_expiring
+    alias: "Frostbox · Assist · what's expiring"
+    triggers:
+      - trigger: conversation
+        command:
+          - "(what's|what is) expiring"
+          - "what (should|do) I (use|eat) first"
+          - "(what's|what is) going bad"
+    actions:
+      - action: frostbox.get_status
+        response_variable: fridge
+      - variables:
+          soon: "{{ fridge.expiring | map(attribute='name') | list }}"
+          gone: "{{ fridge.expired | map(attribute='name') | list }}"
+      - set_conversation_response: >-
+          {% if not soon and not gone %}Nothing is about to expire.
+          {% else %}{% if soon %}Use these first: {{ soon[:6] | join(', ') }}.{% endif %}
+          {% if gone %} Already expired: {{ gone[:6] | join(', ') }}.{% endif %}{% endif %}
+
+  - id: frostbox_assist_inventory
+    alias: "Frostbox · Assist · what's in the fridge"
+    triggers:
+      - trigger: conversation
+        command:
+          - "(what's|what is) in the (fridge|freezer)"
+    actions:
+      - action: frostbox.get_status
+        response_variable: fridge
+      - variables:
+          where: "{{ 'freezer' if 'freezer' in trigger.sentence | lower else 'fridge' }}"
+          inv_entity: >-
+            {{ integration_entities('frostbox') | select('match', 'sensor\..*_inventory$') | first | default('') }}
+          names: >-
+            {{ (state_attr(inv_entity, 'items') or []) | selectattr('location', 'eq', where)
+               | map(attribute='name') | list }}
+      - set_conversation_response: >-
+          {% if names %}In the {{ where }}: {{ names[:12] | join(', ') }}{% if names | count > 12 %}, and {{ names | count - 12 }} more{% endif %}.
+          {% else %}I don't have anything logged in the {{ where }}.{% endif %}
+
+  - id: frostbox_assist_find
+    alias: "Frostbox · Assist · do I have …"
+    triggers:
+      - trigger: conversation
+        command:
+          - "do (I|we) have [any] {item}"
+          - "is there [any] {item} [left] in the (fridge|freezer)"
+          - "are there [any] {item} [left] in the (fridge|freezer)"
+          - "(how much|how many) {item} (do I|do we) have"
+    actions:
+      - action: frostbox.find_item
+        data:
+          query: "{{ trigger.slots.item }}"
+        response_variable: found
+      - set_conversation_response: "{{ found.speech }}"
+
+  - id: frostbox_assist_add
+    alias: "Frostbox · Assist · add to fridge"
+    triggers:
+      - trigger: conversation
+        command:
+          - "(add|put) {item} (to|in|into) the (fridge|refrigerator)"
+          - "I (bought|got) {item}"
+        id: fridge
+      - trigger: conversation
+        command:
+          - "(add|put) {item} (to|in|into) the freezer"
+        id: freezer
+    actions:
+      - action: frostbox.add_item
+        data:
+          name: "{{ trigger.slots.item }}"
+          location: "{{ trigger.id }}"
+        response_variable: added
+      - set_conversation_response: "{{ added.speech }}"
+
+  - id: frostbox_assist_leftover
+    alias: "Frostbox · Assist · leftovers"
+    triggers:
+      - trigger: conversation
+        command:
+          - "(save|add|log) [the] leftover[s] {item}"
+          - "(save|add|log) [the] {item} leftovers"
+    actions:
+      - action: frostbox.add_leftover
+        data:
+          name: "{{ trigger.slots.item }}"
+        response_variable: added
+      - set_conversation_response: "{{ added.speech }}"
+
+  - id: frostbox_assist_consume
+    alias: "Frostbox · Assist · used something"
+    triggers:
+      - trigger: conversation
+        command:
+          - "I used [some|the|a] {item}"
+          - "(I|we) ate [the] {item}"
+        id: one
+      - trigger: conversation
+        command:
+          - "(I|we) finished [the] {item}"
+          - "(I'm|I am|we're|we are) out of {item}"
+          - "(throw|threw) out [the] {item}"
+        id: all
+    actions:
+      - action: frostbox.consume_item
+        data:
+          name: "{{ trigger.slots.item }}"
+          all: "{{ trigger.id == 'all' }}"
+        response_variable: used
+      - set_conversation_response: "{{ used.speech }}"
+
+  - id: frostbox_assist_recipes
+    alias: "Frostbox · Assist · what can I cook"
+    triggers:
+      - trigger: conversation
+        command:
+          - "what (can|should) (I|we) (make|cook) [for dinner|tonight]"
+          - "(give me|suggest) [a] recipe[s]"
+          - "dinner ideas"
+    actions:
+      - action: frostbox.suggest_recipes
+        data:
+          limit: 3
+        response_variable: recipes
+      - set_conversation_response: "{{ recipes.speech }}"
+
+  - id: frostbox_assist_modes
+    alias: "Frostbox · Assist · fridge modes"
+    triggers:
+      - trigger: conversation
+        command:
+          - "(start|turn on|enable) {mode} mode"
+          - "(we're|we are) having (a party|guests|people over)"
+        id: "on"
+      - trigger: conversation
+        command:
+          - "(stop|end|turn off|disable) {mode} mode"
+        id: "off"
+    variables:
+      mode: >-
+        {% set m = (trigger.slots.mode | default('party')) | lower %}
+        {{ m if m in ['party', 'grocery', 'vacation'] else 'party' }}
+    actions:
+      - action: frostbox.activate_mode
+        data:
+          mode: "{{ mode }}"
+          "on": "{{ trigger.id == 'on' }}"
+        response_variable: result
+      - set_conversation_response: "{{ result.speech }}"

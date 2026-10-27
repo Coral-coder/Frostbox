@@ -1,0 +1,163 @@
+# Frostbox dashboard for the Family Hub screen (and phones).
+# Settings → Dashboards → Add dashboard → "New dashboard from scratch",
+# title "Frostbox", then ⋮ → Raw configuration editor → paste this file.
+#
+# Replace the four PLACEHOLDER entities at the bottom (Plex player, kitchen
+# speaker, weather, calendar) with yours. Built-in cards only; no HACS needed.
+title: Frostbox
+views:
+  - title: Kitchen
+    path: kitchen
+    icon: mdi:fridge
+    type: sections
+    max_columns: 4
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Fridge
+            icon: mdi:fridge-outline
+            badges:
+              - type: entity
+                entity: binary_sensor.family_hub_door_ajar
+                show_state: true
+                visibility:
+                  - condition: state
+                    entity: binary_sensor.family_hub_door_ajar
+                    state: "on"
+          - type: tile
+            entity: sensor.family_hub_fridge_temperature
+            name: Fridge
+          - type: tile
+            entity: sensor.family_hub_freezer_temperature
+            name: Freezer
+          - type: tile
+            entity: sensor.family_hub_flexzone_temperature
+            name: FlexZone
+          - type: tile
+            entity: select.family_hub_flexzone_mode
+            name: FlexZone mode
+            features:
+              - type: select-options
+          - type: tile
+            entity: sensor.family_hub_food_safety
+            name: Food safety
+          - type: tile
+            entity: sensor.family_hub_water_filter_used
+            name: Water filter
+          - type: tile
+            entity: sensor.family_hub_door_openings_today
+            name: Opened today
+          - type: tile
+            entity: sensor.family_hub_energy
+            name: Energy
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Use first
+            icon: mdi:clock-alert-outline
+          - type: markdown
+            content: >-
+              {% set soon = state_attr('sensor.family_hub_expiring_soon', 'items') or [] %}
+              {% set gone = state_attr('sensor.family_hub_expired', 'items') or [] %}
+              {% if not soon and not gone %}✅ Nothing is about to expire.{% endif %}
+              {% for i in gone %}
+              🗑️ **{{ i.name }}** — expired ({{ i.location }})
+              {% endfor %}
+              {% for i in soon %}
+              {{ '🔴' if i.days_left == 0 else '🟠' }} **{{ i.name }}** —
+              {{ 'today' if i.days_left == 0 else ('tomorrow' if i.days_left == 1 else i.days_left ~ ' days') }}
+              ({{ i.location }})
+              {% endfor %}
+          - type: todo-list
+            entity: todo.family_hub_inventory
+            title: In the fridge
+            hide_completed: true
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Modes
+            icon: mdi:tune-variant
+          - type: tile
+            entity: switch.family_hub_party_mode
+            name: Party
+            vertical: true
+          - type: tile
+            entity: switch.family_hub_grocery_mode
+            name: Groceries
+            vertical: true
+          - type: tile
+            entity: switch.family_hub_vacation_mode
+            name: Vacation
+            vertical: true
+          - type: tile
+            entity: switch.family_hub_power_cool
+            name: Power Cool
+            vertical: true
+          - type: tile
+            entity: switch.family_hub_power_freeze
+            name: Power Freeze
+            vertical: true
+          - type: tile
+            entity: switch.family_hub_ice_maker
+            name: Ice
+            vertical: true
+          - type: button
+            entity: button.family_hub_dinner_ready
+            name: Dinner's ready!
+            icon: mdi:silverware-fork-knife
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.family_hub_dinner_ready
+            grid_options:
+              columns: full
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.family_hub_food_safety
+                state: unsafe
+            card:
+              type: button
+              entity: button.family_hub_acknowledge_food_safety_alert
+              name: I've dealt with the warm food
+              icon: mdi:check-decagram
+              tap_action:
+                action: perform-action
+                perform_action: button.press
+                target:
+                  entity_id: button.family_hub_acknowledge_food_safety_alert
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Inside
+            icon: mdi:camera-outline
+          - type: picture-entity
+            entity: camera.family_hub_inside_camera
+            show_name: false
+            camera_view: auto
+          - type: todo-list
+            entity: todo.shopping_list
+            title: Shopping list
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Now playing
+            icon: mdi:plex
+          - type: media-control
+            entity: media_player.plex_living_room  # PLACEHOLDER: your Plex player
+          - type: media-control
+            entity: media_player.kitchen  # PLACEHOLDER: kitchen speaker / HomePod
+          - type: weather-forecast
+            entity: weather.home  # PLACEHOLDER
+            forecast_type: daily
+          - type: calendar
+            entities:
+              - calendar.family  # PLACEHOLDER
+            initial_view: listWeek

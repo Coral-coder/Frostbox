@@ -1,0 +1,69 @@
+blueprint:
+  name: Frostbox – Pause Plex while the fridge is open
+  description: >-
+    Pause Plex (or any media player) when a fridge door has been open for a
+    while — handy for the kitchen TV or a snack run mid-episode — and resume
+    when it closes.
+  domain: automation
+  source_url: https://github.com/coral-coder/frostbox/blob/main/homeassistant/blueprints/automation/frostbox/plex_door_pause.yaml
+  input:
+    door:
+      name: Door sensor
+      default: binary_sensor.family_hub_any_door_open
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+    open_for:
+      name: Pause after door open for
+      default:
+        seconds: 20
+      selector:
+        duration:
+    players:
+      name: Media players
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: media_player
+    resume:
+      name: Resume on close
+      default: true
+      selector:
+        boolean:
+
+mode: single
+
+trigger:
+  - trigger: state
+    entity_id: !input door
+    to: "on"
+    for: !input open_for
+
+variables:
+  players: !input players
+  resume: !input resume
+  playing: "{{ players | select('is_state', 'playing') | list }}"
+
+condition:
+  - condition: template
+    value_template: "{{ playing | count > 0 }}"
+
+action:
+  - action: media_player.media_pause
+    target:
+      entity_id: "{{ playing }}"
+  - if:
+      - condition: template
+        value_template: "{{ resume }}"
+    then:
+      - wait_for_trigger:
+          - trigger: state
+            entity_id: !input door
+            to: "off"
+        timeout:
+          minutes: 30
+      - action: media_player.media_play
+        target:
+          entity_id: "{{ playing }}"

@@ -1,0 +1,51 @@
+blueprint:
+  name: Frostbox – Reorder the water filter
+  description: Add the water filter to the shopping list and notify when the fridge says it's due.
+  domain: automation
+  source_url: https://github.com/coral-coder/frostbox/blob/main/homeassistant/blueprints/automation/frostbox/water_filter.yaml
+  input:
+    filter_sensor:
+      name: Filter replacement sensor
+      default: binary_sensor.family_hub_water_filter_replacement_needed
+      selector:
+        entity:
+          filter:
+            - integration: frostbox
+              domain: binary_sensor
+    shopping_list:
+      name: Shopping list
+      default: todo.shopping_list
+      selector:
+        entity:
+          filter:
+            - domain: todo
+    item_name:
+      name: Shopping list text
+      description: Check the part number in your manual or the SmartThings app.
+      default: "Samsung fridge water filter"
+      selector:
+        text:
+    notify_device:
+      name: Phone to notify
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+
+trigger:
+  - trigger: state
+    entity_id: !input filter_sensor
+    from: "off"
+    to: "on"
+
+action:
+  - action: todo.add_item
+    target:
+      entity_id: !input shopping_list
+    data:
+      item: !input item_name
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: "Fridge water filter"
+    message: "Time for a new water filter. It's on your shopping list. Press 'Reset water filter' after swapping it."

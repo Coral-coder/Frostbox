@@ -1,0 +1,75 @@
+# Apple Home for Frostbox.
+#
+# Creates two HomeKit pairings next to any HomeKit Bridge you already have:
+#   1. "Frostbox"         – a bridge with the fridge sensors and switches
+#   2. "Fridge Camera"    – the inside camera (HomeKit requires cameras to be
+#                           their own accessory). Opening a door shows up as
+#                           motion, so Apple Home can notify with a snapshot.
+#
+# Entity IDs assume the fridge is named "Family Hub" in SmartThings. If yours
+# differs, search-and-replace `family_hub` below.
+# Pair from Settings → Devices & services → HomeKit Bridge → (each entry) → the
+# QR code appears in Notifications.
+
+homekit:
+  - name: Frostbox
+    port: 21070
+    filter:
+      include_entities:
+        - binary_sensor.family_hub_fridge_door
+        - binary_sensor.family_hub_freezer_door
+        - binary_sensor.family_hub_flexzone_door
+        - binary_sensor.family_hub_door_ajar
+        - binary_sensor.family_hub_food_safety_alert
+        - binary_sensor.family_hub_water_filter_replacement_needed
+        - sensor.family_hub_fridge_temperature
+        - sensor.family_hub_freezer_temperature
+        - sensor.family_hub_flexzone_temperature
+        - switch.family_hub_power_cool
+        - switch.family_hub_power_freeze
+        - switch.family_hub_ice_maker
+        - switch.family_hub_party_mode
+        - switch.family_hub_grocery_mode
+        - switch.family_hub_vacation_mode
+        - button.family_hub_dinner_ready
+    entity_config:
+      binary_sensor.family_hub_fridge_door:
+        name: Fridge Door
+      binary_sensor.family_hub_freezer_door:
+        name: Freezer Drawer
+      binary_sensor.family_hub_flexzone_door:
+        name: FlexZone Drawer
+      binary_sensor.family_hub_door_ajar:
+        name: Fridge Left Open
+      binary_sensor.family_hub_food_safety_alert:
+        name: Fridge Food Safety
+      binary_sensor.family_hub_water_filter_replacement_needed:
+        name: Fridge Filter Due
+      sensor.family_hub_fridge_temperature:
+        name: Fridge
+      sensor.family_hub_freezer_temperature:
+        name: Freezer
+      sensor.family_hub_flexzone_temperature:
+        name: FlexZone
+      switch.family_hub_party_mode:
+        name: Fridge Party Mode
+      switch.family_hub_grocery_mode:
+        name: Fridge Grocery Mode
+      switch.family_hub_vacation_mode:
+        name: Fridge Vacation Mode
+      button.family_hub_dinner_ready:
+        name: Dinner Ready
+
+  - name: Fridge Camera
+    port: 21071
+    mode: accessory
+    filter:
+      include_entities:
+        - camera.family_hub_inside_camera
+    entity_config:
+      camera.family_hub_inside_camera:
+        name: Inside the Fridge
+        support_audio: false
+        max_fps: 10
+        # The fridge has no motion sensor; a door opening is the next best thing.
+        linked_motion_sensor: binary_sensor.family_hub_any_door_open

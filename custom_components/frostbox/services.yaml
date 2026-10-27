@@ -1,0 +1,176 @@
+add_item:
+  fields:
+    name:
+      example: "Greek yogurt"
+      selector:
+        text:
+    barcode:
+      example: "0049000028911"
+      selector:
+        text:
+    quantity:
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 1000
+          step: 0.5
+          mode: box
+    unit:
+      example: "oz"
+      selector:
+        text:
+    location:
+      default: fridge
+      selector:
+        select:
+          options: [fridge, freezer, flexzone, door, pantry]
+    category:
+      selector:
+        select:
+          options: [leftovers, poultry, seafood, ground_meat, meat, deli, milk, yogurt, cheese, eggs, butter, berries, leafy_greens, vegetables, fruit, bread, sauces, condiments, beverages, frozen, baby]
+    expires:
+      selector:
+        date:
+    days:
+      selector:
+        number:
+          min: 0
+          max: 3650
+          mode: box
+    staple:
+      default: false
+      selector:
+        boolean:
+    min_quantity:
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    notes:
+      selector:
+        text:
+    config_entry_id: &entry
+      selector:
+        config_entry:
+          integration: frostbox
+
+add_leftover:
+  fields:
+    name:
+      required: true
+      example: "lasagna"
+      selector:
+        text:
+    days:
+      default: 4
+      selector:
+        number:
+          min: 0
+          max: 30
+    location:
+      default: fridge
+      selector:
+        select:
+          options: [fridge, freezer, flexzone, door, pantry]
+    config_entry_id: *entry
+
+consume_item:
+  fields:
+    name:
+      required: true
+      example: "milk"
+      selector:
+        text:
+    quantity:
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 1000
+          step: 0.5
+          mode: box
+    all:
+      default: false
+      selector:
+        boolean:
+    config_entry_id: *entry
+
+remove_item:
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+    config_entry_id: *entry
+
+find_item:
+  fields:
+    query:
+      required: true
+      example: "eggs"
+      selector:
+        text:
+    config_entry_id: *entry
+
+get_status:
+  fields:
+    config_entry_id: *entry
+
+suggest_recipes:
+  fields:
+    limit:
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 20
+    config_entry_id: *entry
+
+activate_mode:
+  fields:
+    mode:
+      required: true
+      selector:
+        select:
+          options: [party, grocery, vacation]
+    "on":
+      default: true
+      selector:
+        boolean:
+    hours:
+      selector:
+        number:
+          min: 0.5
+          max: 720
+          step: 0.5
+          mode: box
+    config_entry_id: *entry
+
+send_command:
+  fields:
+    component:
+      default: main
+      selector:
+        text:
+    capability:
+      required: true
+      example: "custom.fridgeMode"
+      selector:
+        text:
+    command:
+      required: true
+      example: "setFridgeMode"
+      selector:
+        text:
+    arguments:
+      example: '["CV_FDR_BEVERAGE"]'
+      selector:
+        object:
+    config_entry_id: *entry
+
+dump_capabilities:
+  fields:
+    config_entry_id: *entry

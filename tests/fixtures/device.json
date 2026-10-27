@@ -1,0 +1,157 @@
+{
+ "deviceId": "fridge-1234",
+ "name": "Samsung-Refrigerator",
+ "label": "Family Hub",
+ "locationId": "loc-1",
+ "ocf": {
+  "ocfDeviceType": "oic.d.refrigerator",
+  "modelNumber": "RF90F29AEWAA|...",
+  "firmwareVersion": "20260901"
+ },
+ "components": [
+  {
+   "id": "main",
+   "capabilities": [
+    {
+     "id": "contactSensor",
+     "version": 1
+    },
+    {
+     "id": "temperatureMeasurement",
+     "version": 1
+    },
+    {
+     "id": "refrigeration",
+     "version": 1
+    },
+    {
+     "id": "samsungce.powerCool",
+     "version": 1
+    },
+    {
+     "id": "samsungce.powerFreeze",
+     "version": 1
+    },
+    {
+     "id": "custom.waterFilter",
+     "version": 1
+    },
+    {
+     "id": "powerConsumptionReport",
+     "version": 1
+    },
+    {
+     "id": "samsungce.viewInside",
+     "version": 1
+    },
+    {
+     "id": "samsungce.fridgeVacationMode",
+     "version": 1
+    },
+    {
+     "id": "samsungce.sabbathMode",
+     "version": 1
+    },
+    {
+     "id": "ocf",
+     "version": 1
+    },
+    {
+     "id": "custom.disabledCapabilities",
+     "version": 1
+    }
+   ],
+   "categories": [
+    {
+     "name": "Refrigerator"
+    }
+   ]
+  },
+  {
+   "id": "cooler",
+   "capabilities": [
+    {
+     "id": "contactSensor",
+     "version": 1
+    },
+    {
+     "id": "temperatureMeasurement",
+     "version": 1
+    },
+    {
+     "id": "thermostatCoolingSetpoint",
+     "version": 1
+    },
+    {
+     "id": "custom.disabledCapabilities",
+     "version": 1
+    }
+   ],
+   "categories": []
+  },
+  {
+   "id": "freezer",
+   "capabilities": [
+    {
+     "id": "contactSensor",
+     "version": 1
+    },
+    {
+     "id": "temperatureMeasurement",
+     "version": 1
+    },
+    {
+     "id": "thermostatCoolingSetpoint",
+     "version": 1
+    },
+    {
+     "id": "custom.disabledCapabilities",
+     "version": 1
+    }
+   ],
+   "categories": []
+  },
+  {
+   "id": "cvroom",
+   "capabilities": [
+    {
+     "id": "contactSensor",
+     "version": 1
+    },
+    {
+     "id": "temperatureMeasurement",
+     "version": 1
+    },
+    {
+     "id": "custom.fridgeMode",
+     "version": 1
+    },
+    {
+     "id": "custom.disabledCapabilities",
+     "version": 1
+    }
+   ],
+   "categories": []
+  },
+  {
+   "id": "icemaker",
+   "capabilities": [
+    {
+     "id": "switch",
+     "version": 1
+    }
+   ],
+   "categories": []
+  },
+  {
+   "id": "icemaker-02",
+   "capabilities": [
+    {
+     "id": "switch",
+     "version": 1
+    }
+   ],
+   "categories": []
+  }
+ ]
+}

@@ -1,0 +1,51 @@
+blueprint:
+  name: Frostbox – Food safety alerts
+  description: >-
+    Critical notification when the fridge has been too warm (power outage, door
+    left open, failure) and a heads-up when it may be heading that way. The
+    message says what to throw out.
+  domain: automation
+  source_url: https://github.com/coral-coder/frostbox/blob/main/homeassistant/blueprints/automation/frostbox/food_safety.yaml
+  input:
+    safety_sensor:
+      name: Food safety sensor
+      default: sensor.family_hub_food_safety
+      selector:
+        entity:
+          filter:
+            - integration: frostbox
+              domain: sensor
+    notify_device:
+      name: Phone to notify
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+
+mode: queued
+
+trigger:
+  - trigger: state
+    entity_id: !input safety_sensor
+    to: ["warning", "unsafe"]
+    for:
+      minutes: 1
+
+variables:
+  safety_sensor: !input safety_sensor
+  critical: "{{ trigger.to_state.state == 'unsafe' }}"
+
+action:
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: "{{ '🚨 Fridge food may be unsafe' if critical else '⚠️ Fridge is warm' }}"
+    message: "{{ state_attr(safety_sensor, 'advice') }}"
+    data:
+      tag: frostbox-safety
+      push:
+        interruption-level: "{{ 'critical' if critical else 'time-sensitive' }}"
+        sound:
+          name: default
+          critical: "{{ 1 if critical else 0 }}"
+          volume: 1.0

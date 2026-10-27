@@ -1,0 +1,41 @@
+blueprint:
+  name: Frostbox – Vacation mode follows the house
+  description: Turn fridge vacation mode on and off with an "away"/vacation helper or alarm mode.
+  domain: automation
+  source_url: https://github.com/coral-coder/frostbox/blob/main/homeassistant/blueprints/automation/frostbox/vacation_sync.yaml
+  input:
+    away_entity:
+      name: Vacation/away entity
+      description: e.g. input_boolean.vacation
+      selector:
+        entity: {}
+    away_state:
+      name: State that means "on vacation"
+      default: "on"
+      selector:
+        text:
+    delay:
+      name: Wait before switching on
+      default:
+        hours: 12
+      selector:
+        duration:
+
+mode: restart
+
+trigger:
+  - trigger: state
+    entity_id: !input away_entity
+    to: !input away_state
+    for: !input delay
+    id: away
+  - trigger: state
+    entity_id: !input away_entity
+    from: !input away_state
+    id: home
+
+action:
+  - action: frostbox.activate_mode
+    data:
+      mode: vacation
+      "on": "{{ trigger.id == 'away' }}"

@@ -1,0 +1,100 @@
+blueprint:
+  name: Frostbox – Dinner's ready
+  description: >-
+    When "Dinner ready" is pressed (on the fridge screen, the dashboard, Siri or
+    Assist): notify everyone, announce it, turn on the TV and resume Plex.
+  domain: automation
+  source_url: https://github.com/coral-coder/frostbox/blob/main/homeassistant/blueprints/automation/frostbox/dinner_ready.yaml
+  input:
+    notify_action:
+      name: Notify action
+      description: A notify action that reaches everyone, e.g. notify.family (a notify group) or notify.mobile_app_my_iphone.
+      default: notify.notify
+      selector:
+        text:
+    tts_engine:
+      name: Text-to-speech engine (optional)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: tts
+    speakers:
+      name: Speakers (optional)
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: media_player
+    tv:
+      name: TV to turn on (optional)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: media_player
+    plex_player:
+      name: Plex player to resume (optional)
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain: media_player
+
+mode: single
+
+trigger:
+  - trigger: event
+    event_type: frostbox_dinner_ready
+  - trigger: conversation
+    command:
+      - "dinner is ready"
+      - "dinner's ready"
+      - "dinner time"
+
+variables:
+  notify_action: !input notify_action
+  tts_engine: !input tts_engine
+  speakers: !input speakers
+  tv: !input tv
+  plex_player: !input plex_player
+
+action:
+  - if:
+      - condition: template
+        value_template: "{{ trigger.platform == 'conversation' }}"
+    then:
+      - set_conversation_response: "Telling everyone dinner's ready."
+  - action: "{{ notify_action }}"
+    continue_on_error: true
+    data:
+      title: "🍽️ Dinner's ready"
+      message: "Come and eat!"
+  - if:
+      - condition: template
+        value_template: "{{ tts_engine != '' and speakers | count > 0 }}"
+    then:
+      - action: tts.speak
+        target:
+          entity_id: "{{ tts_engine }}"
+        data:
+          media_player_entity_id: "{{ speakers }}"
+          message: "Dinner's ready!"
+  - if:
+      - condition: template
+        value_template: "{{ tv != '' }}"
+    then:
+      - action: media_player.turn_on
+        target:
+          entity_id: "{{ tv }}"
+  - if:
+      - condition: template
+        value_template: "{{ plex_player != '' }}"
+    then:
+      - delay:
+          seconds: 10
+      - action: media_player.media_play
+        target:
+          entity_id: "{{ plex_player }}"
+        continue_on_error: true

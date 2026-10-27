@@ -1,0 +1,295 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect your Family Hub",
+        "description": "Frostbox talks to the fridge through SmartThings. The easiest way is to reuse Home Assistant's built-in SmartThings integration (set that up first). A personal access token works for testing but Samsung expires those after 24 hours.",
+        "menu_options": {
+          "core": "Use the SmartThings integration (recommended)",
+          "pat": "Use a personal access token"
+        }
+      },
+      "core": {
+        "title": "Pick SmartThings account",
+        "data": {
+          "core_entry_id": "SmartThings account"
+        }
+      },
+      "pat": {
+        "title": "Personal access token",
+        "description": "Create one at https://account.smartthings.com/tokens with all Devices and Locations scopes.",
+        "data": {
+          "token": "Token"
+        }
+      },
+      "device": {
+        "title": "Pick your fridge",
+        "data": {
+          "device_id": "Refrigerator"
+        }
+      },
+      "reauth_confirm": {
+        "title": "New access token",
+        "data": {
+          "token": "Token"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "SmartThings rejected the token.",
+      "cannot_connect": "Could not reach SmartThings.",
+      "no_fridge": "No refrigerator was found on this SmartThings account."
+    },
+    "abort": {
+      "core_missing": "Set up Home Assistant's SmartThings integration first (Settings → Devices & services → Add integration → SmartThings), then add Frostbox.",
+      "already_configured": "This fridge is already set up.",
+      "invalid_auth": "SmartThings rejected the token.",
+      "cannot_connect": "Could not reach SmartThings.",
+      "no_fridge": "No refrigerator was found on this SmartThings account. Finish the fridge's SmartThings setup first.",
+      "reauth_core": "Re-authenticate the SmartThings integration; Frostbox uses its login.",
+      "reauth_successful": "Token updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Frostbox options",
+        "data": {
+          "scan_interval": "Polling interval",
+          "door_ajar_seconds": "Door ajar after",
+          "expiry_warning_days": "Warn before expiry",
+          "shopping_list_entity": "Shopping list",
+          "camera_sources": "Camera sources",
+          "camera_refresh_seconds": "Camera refresh",
+          "view_inside_url_template": "View Inside image URL template",
+          "view_inside_token": "View Inside image token",
+          "fridge_screen_switches": "Add Frostbox switches to the fridge screen",
+          "party_mode_hours": "Party mode length",
+          "grocery_mode_hours": "Grocery mode length",
+          "party_flexzone_mode": "FlexZone mode for party",
+          "recipe_conversation_agent": "AI agent for recipe ideas"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll SmartThings. Door changes arrive faster when the core SmartThings integration is installed.",
+          "shopping_list_entity": "Low staples and filters get added here. Sync it to Apple Reminders with any to-do integration.",
+          "camera_sources": "Existing cameras that receive Family Hub photos (for example from a Family Hub camera integration). Each becomes a Frostbox camera you can expose to Apple Home.",
+          "view_inside_url_template": "Advanced: download AI Vision Inside photos directly. Placeholders: {file_id}, {device_id}, {focus_area}.",
+          "view_inside_token": "Bearer token for the URL above. Leave empty to use the SmartThings token.",
+          "fridge_screen_switches": "Creates SmartThings virtual switches (Party, Grocery, Vacation, Dinner ready) that you can tap on the Family Hub or ask Bixby to turn on.",
+          "party_flexzone_mode": "Raw SmartThings mode, e.g. CV_FDR_BEVERAGE. Leave empty to auto-pick a beverage mode.",
+          "recipe_conversation_agent": "Optional. Without one, recipes come from TheMealDB."
+        }
+      }
+    }
+  },
+  "services": {
+    "add_item": {
+      "name": "Add item",
+      "description": "Add food to the fridge inventory. Give a barcode to look it up on Open Food Facts.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "What it is."
+        },
+        "barcode": {
+          "name": "Barcode",
+          "description": "UPC/EAN, e.g. from an iPhone Shortcut scan."
+        },
+        "quantity": {
+          "name": "Quantity",
+          "description": "How many."
+        },
+        "unit": {
+          "name": "Unit",
+          "description": "Optional unit, e.g. oz."
+        },
+        "location": {
+          "name": "Location",
+          "description": "Where it is stored."
+        },
+        "category": {
+          "name": "Category",
+          "description": "Overrides the automatic shelf-life category."
+        },
+        "expires": {
+          "name": "Expires",
+          "description": "Exact expiry date."
+        },
+        "days": {
+          "name": "Good for (days)",
+          "description": "Expires this many days from today."
+        },
+        "staple": {
+          "name": "Staple",
+          "description": "Re-add to the shopping list when it runs low."
+        },
+        "min_quantity": {
+          "name": "Minimum",
+          "description": "Staples at or below this go on the shopping list."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Anything else."
+        },
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "add_leftover": {
+      "name": "Add leftover",
+      "description": "Track leftovers with a short shelf life.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "What it is."
+        },
+        "days": {
+          "name": "Good for (days)",
+          "description": "Default 4 days."
+        },
+        "location": {
+          "name": "Location",
+          "description": "Where it is stored."
+        },
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "consume_item": {
+      "name": "Use item",
+      "description": "Mark food as used. Staples that run low go on the shopping list.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "What you used."
+        },
+        "quantity": {
+          "name": "Quantity",
+          "description": "How much."
+        },
+        "all": {
+          "name": "All of it",
+          "description": "Finish the item."
+        },
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "remove_item": {
+      "name": "Remove item",
+      "description": "Delete items from the inventory.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Item name or id."
+        },
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "find_item": {
+      "name": "Find item",
+      "description": "Do I have …? Returns matches and a spoken answer.",
+      "fields": {
+        "query": {
+          "name": "Item",
+          "description": "What to look for."
+        },
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "get_status": {
+      "name": "Fridge status",
+      "description": "Temperatures, doors, food safety and what to use first, with a spoken summary.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "suggest_recipes": {
+      "name": "Suggest recipes",
+      "description": "Recipe ideas that use what is expiring first.",
+      "fields": {
+        "limit": {
+          "name": "Limit",
+          "description": "How many recipes."
+        },
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "activate_mode": {
+      "name": "Set mode",
+      "description": "Turn party, grocery or vacation mode on or off.",
+      "fields": {
+        "mode": {
+          "name": "Mode",
+          "description": "Which mode."
+        },
+        "on": {
+          "name": "On",
+          "description": "Turn on (or off)."
+        },
+        "hours": {
+          "name": "Hours",
+          "description": "Override how long it lasts."
+        },
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "send_command": {
+      "name": "Send SmartThings command",
+      "description": "Advanced: send any SmartThings command to the fridge.",
+      "fields": {
+        "component": {
+          "name": "Component",
+          "description": "e.g. main, cooler, freezer, cvroom."
+        },
+        "capability": {
+          "name": "Capability",
+          "description": "SmartThings capability id."
+        },
+        "command": {
+          "name": "Command",
+          "description": "Command name."
+        },
+        "arguments": {
+          "name": "Arguments",
+          "description": "List of arguments."
+        },
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    },
+    "dump_capabilities": {
+      "name": "Dump capabilities",
+      "description": "Write everything the fridge reports to /config/frostbox_capabilities.json.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Fridge",
+          "description": "Only needed if you have more than one Frostbox fridge."
+        }
+      }
+    }
+  }
+}

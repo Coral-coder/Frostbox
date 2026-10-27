@@ -1,0 +1,251 @@
+{
+ "components": {
+  "main": {
+   "contactSensor": {
+    "contact": {
+     "value": "closed",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "temperatureMeasurement": {
+    "temperature": {
+     "value": 37,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    }
+   },
+   "refrigeration": {
+    "defrost": {
+     "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    },
+    "rapidCooling": {
+     "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    },
+    "rapidFreezing": {
+     "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "samsungce.powerCool": {
+    "activated": {
+     "value": false,
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "samsungce.powerFreeze": {
+    "activated": {
+     "value": false,
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "custom.waterFilter": {
+    "waterFilterUsage": {
+     "value": 42,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "%"
+    },
+    "waterFilterStatus": {
+     "value": "normal",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    },
+    "waterFilterUsageStep": {
+     "value": 1,
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    },
+    "waterFilterResetType": {
+     "value": [
+      "replaceable"
+     ],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "powerConsumptionReport": {
+    "powerConsumption": {
+     "value": {
+      "energy": 123456,
+      "power": 85,
+      "deltaEnergy": 12,
+      "start": "2026-10-27T12:00:00.000Z",
+      "end": "2026-10-27T12:00:00.000Z"
+     },
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "samsungce.viewInside": {
+    "contents": {
+     "value": [
+      {
+       "fileId": "file-1",
+       "mimeType": "image/jpeg",
+       "focusArea": "None",
+       "createdTime": "2026-10-27T12:00:00.000Z"
+      }
+     ],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    },
+    "supportedFocusAreas": {
+     "value": [
+      "None"
+     ],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "samsungce.fridgeVacationMode": {
+    "vacationMode": {
+     "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "samsungce.sabbathMode": {
+    "status": {
+     "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "ocf": {
+    "mnmn": {
+     "value": "Samsung Electronics",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    },
+    "mnmo": {
+     "value": "RF90F29AEWAA|...",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "custom.disabledCapabilities": {
+    "disabledCapabilities": {
+     "value": [],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   }
+  },
+  "cooler": {
+   "contactSensor": {
+    "contact": {
+     "value": "closed",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "temperatureMeasurement": {
+    "temperature": {
+     "value": 37,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    }
+   },
+   "thermostatCoolingSetpoint": {
+    "coolingSetpoint": {
+     "value": 37,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    },
+    "coolingSetpointRange": {
+     "value": {
+      "minimum": 34,
+      "maximum": 44,
+      "step": 1
+     },
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    }
+   },
+   "custom.disabledCapabilities": {
+    "disabledCapabilities": {
+     "value": [],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   }
+  },
+  "freezer": {
+   "contactSensor": {
+    "contact": {
+     "value": "closed",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "temperatureMeasurement": {
+    "temperature": {
+     "value": 0,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    }
+   },
+   "thermostatCoolingSetpoint": {
+    "coolingSetpoint": {
+     "value": 0,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    },
+    "coolingSetpointRange": {
+     "value": {
+      "minimum": -8,
+      "maximum": 5,
+      "step": 1
+     },
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    }
+   },
+   "custom.disabledCapabilities": {
+    "disabledCapabilities": {
+     "value": [],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   }
+  },
+  "cvroom": {
+   "contactSensor": {
+    "contact": {
+     "value": "closed",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "temperatureMeasurement": {
+    "temperature": {
+     "value": 33,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    }
+   },
+   "custom.fridgeMode": {
+    "fridgeMode": {
+     "value": "CV_FDR_DELI",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    },
+    "supportedFridgeModes": {
+     "value": [
+      "CV_FDR_WINE",
+      "CV_FDR_DELI",
+      "CV_FDR_BEVERAGE",
+      "CV_FDR_MEAT"
+     ],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "custom.disabledCapabilities": {
+    "disabledCapabilities": {
+     "value": [],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   }
+  },
+  "icemaker": {
+   "switch": {
+    "switch": {
+     "value": "on",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   }
+  },
+  "icemaker-02": {
+   "switch": {
+    "switch": {
+     "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   }
+  }
+ }
+}

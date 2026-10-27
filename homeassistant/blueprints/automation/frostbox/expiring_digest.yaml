@@ -1,0 +1,61 @@
+blueprint:
+  name: Frostbox – Daily "use it first" digest
+  description: >-
+    Once a day, list what's expiring (and what already has) with a recipe idea
+    that uses it. Nothing is sent when nothing is close to expiring.
+  domain: automation
+  source_url: https://github.com/coral-coder/frostbox/blob/main/homeassistant/blueprints/automation/frostbox/expiring_digest.yaml
+  input:
+    at_time:
+      name: Time
+      default: "16:00:00"
+      selector:
+        time:
+    notify_device:
+      name: Phone to notify
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+    include_recipe:
+      name: Include a recipe idea
+      default: true
+      selector:
+        boolean:
+
+trigger:
+  - trigger: time
+    at: !input at_time
+
+variables:
+  include_recipe: !input include_recipe
+
+action:
+  - action: frostbox.get_status
+    response_variable: fridge
+  - condition: template
+    value_template: "{{ fridge.expiring | count > 0 or fridge.expired | count > 0 }}"
+  - if:
+      - condition: template
+        value_template: "{{ include_recipe }}"
+    then:
+      - action: frostbox.suggest_recipes
+        data:
+          limit: 3
+        response_variable: recipes
+    else:
+      - variables:
+          recipes: {"speech": ""}
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: "Use these first 🥬"
+    message: >-
+      {% set soon = fridge.expiring | map(attribute='name') | list %}
+      {% set gone = fridge.expired | map(attribute='name') | list %}
+      {% if soon %}Expiring: {{ soon | join(', ') }}.{% endif %}
+      {% if gone %} Expired: {{ gone | join(', ') }}.{% endif %}
+      {{ recipes.speech }}
+    data:
+      tag: frostbox-digest
+      url: /dashboard-frostbox/0

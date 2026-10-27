@@ -1,0 +1,14 @@
+{
+  "domain": "frostbox",
+  "name": "Frostbox (Samsung Family Hub)",
+  "after_dependencies": ["smartthings", "conversation", "homekit"],
+  "codeowners": ["@coral-coder"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/coral-coder/frostbox",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/coral-coder/frostbox/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

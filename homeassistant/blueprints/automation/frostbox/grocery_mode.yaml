@@ -1,0 +1,44 @@
+blueprint:
+  name: Frostbox – Grocery mode when leaving the store
+  description: >-
+    Pre-chills the fridge (Power Cool) when you leave a grocery store zone so
+    the new food cools faster. Add a zone around your usual store first.
+  domain: automation
+  source_url: https://github.com/coral-coder/frostbox/blob/main/homeassistant/blueprints/automation/frostbox/grocery_mode.yaml
+  input:
+    people:
+      name: People
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: person
+    store_zone:
+      name: Grocery store zone
+      selector:
+        entity:
+          filter:
+            - domain: zone
+    hours:
+      name: Keep it on for
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 8
+          unit_of_measurement: h
+
+trigger:
+  - trigger: zone
+    entity_id: !input people
+    zone: !input store_zone
+    event: leave
+
+variables:
+  hours: !input hours
+
+action:
+  - action: frostbox.activate_mode
+    data:
+      mode: grocery
+      hours: "{{ hours }}"
