@@ -34,6 +34,10 @@ CONF_PARTY_HOURS: Final = "party_mode_hours"
 CONF_GROCERY_HOURS: Final = "grocery_mode_hours"
 CONF_PARTY_FLEX_MODE: Final = "party_flexzone_mode"
 CONF_RECIPE_AGENT: Final = "recipe_conversation_agent"
+CONF_HDHOMERUN_HOST: Final = "hdhomerun_host"
+CONF_TV_QUALITY: Final = "tv_quality"
+CONF_PLEX_URL: Final = "plex_url"
+CONF_PLEX_TOKEN: Final = "plex_token"
 
 DEFAULT_SCAN_INTERVAL: Final = 20
 DEFAULT_DOOR_AJAR_SECONDS: Final = 60
@@ -43,6 +47,7 @@ DEFAULT_CAMERA_REFRESH: Final = 60
 MJPEG_FPS: Final = 10
 DEFAULT_PARTY_HOURS: Final = 6.0
 DEFAULT_GROCERY_HOURS: Final = 3.0
+DEFAULT_TV_QUALITY: Final = "720p"
 
 MIN_SCAN_INTERVAL: Final = timedelta(seconds=10)
 
@@ -96,10 +101,11 @@ EVENT_DINNER_READY: Final = f"{DOMAIN}_dinner_ready"
 EVENT_DOOR: Final = f"{DOMAIN}_door"
 EVENT_INVENTORY: Final = f"{DOMAIN}_inventory_changed"
 EVENT_SCREENSAVER: Final = f"{DOMAIN}_screensaver"
+EVENT_KIOSK_APP: Final = f"{DOMAIN}_kiosk_app"
 
 # Fridge-screen kiosk and screensavers (served from ./www)
 STATIC_URL: Final = "/frostbox"
-SCREENSAVERS: Final = ("Aquarium", "Matrix", "Cycle", "Off")
+SCREENSAVERS: Final = ("Aquarium", "Matrix", "Plex", "Cycle", "Off")
 
 LOCATIONS: Final = ("fridge", "freezer", "flexzone", "door", "pantry")
 

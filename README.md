@@ -130,6 +130,7 @@ Tapping the screen, or opening any fridge door, wakes it straight back to the da
 | --- | --- |
 | **Aquarium** | Clownfish, tangs, angelfish, neon tetras and a jellyfish, with swaying seaweed, rising bubbles and light rays. The tank lights dim at night, and the fish dart when someone opens the fridge |
 | **Matrix** | Green code rain. Now and then a column spells something that's in your fridge |
+| **Plex** | A slideshow of your newest shows and movies |
 | **Cycle** | Alternates between the two every 10 minutes |
 
 Both screensavers show the time, fridge and freezer temperatures and what to use first. They also flag an open
@@ -159,6 +160,28 @@ homeassistant:
 With *Add Frostbox switches to the fridge screen* on, Party/Grocery/Vacation/Dinner also appear as native tiles in
 the Family Hub's SmartThings panel and work with Bixby.
 
+## Live TV, TV guide and Plex on the fridge
+
+The kiosk has a dock at the bottom: **Home · Live TV · Guide · Plex**.
+
+**Live TV (HDHomeRun).** Frostbox finds your HDHomeRun automatically (or set its IP in options), lists the
+channels, and plays them full-screen on the fridge. Cable tuners like the **HDHomeRun PRIME** send MPEG-2 video,
+which browsers can't play, so Home Assistant converts the channel you're watching into H.264/AAC (HLS) with
+ffmpeg. It uses roughly one CPU core while watching, so give the Home Assistant VM 2 or more cores. *Live TV
+quality* in the options trades sharpness for CPU. Streams stop on their own about 45 s after nobody is watching,
+which frees the tuner. Frostbox uses at most 2 of the PRIME's 3 tuners.
+
+- **Copy-protected channels** (premium channels your cable company marks copy-once) show a 🔒. The PRIME only
+  streams those to HDHomeRun's own DRM-enabled apps, so they can't play here.
+- **TV guide**: a 4-hour grid from SiliconDust's guide service, using the tuner's own credentials. If the guide
+  isn't available for your tuner, channels still play and the app says why.
+- **Remote control**: `frostbox.show_on_fridge` with `app: tv` and `channel: CNN` (or `4.1`). Assist also
+  understands "put CNN on the fridge", "show the guide on the fridge" and "turn off the fridge TV".
+
+**Plex.** A "what's new" screen with continue watching, new episodes (grouped per show) and new movies, plus a
+**Plex screensaver**: a slideshow of the newest arrivals. It reuses Home Assistant's Plex integration (or a
+URL and token in the options). Artwork goes through a signed proxy, so your Plex token never reaches the fridge.
+
 ## Actions
 
 | Action | What it does | Response |
@@ -172,7 +195,8 @@ the Family Hub's SmartThings panel and work with Bixby.
 | `frostbox.suggest_recipes` | recipes using what expires first | recipes, `speech` |
 | `frostbox.activate_mode` | party / grocery / vacation on/off with hours | `speech` |
 | `frostbox.send_command` | raw SmartThings command | none |
-| `frostbox.dump_capabilities` | writes `/config/frostbox_capabilities.json` | path, capabilities |
+| `frostbox.dump_capabilities` | writes `/config/frostbox_capabilities.json` | path, capabilities, summary |
+| `frostbox.show_on_fridge` | open Live TV (on a channel), the guide, Plex or the screensaver on the fridge | none |
 
 Events: `frostbox_door` (open/close with duration), `frostbox_dinner_ready`, `frostbox_inventory_changed`.
 

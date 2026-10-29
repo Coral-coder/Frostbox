@@ -1,10 +1,10 @@
 {
   "domain": "frostbox",
   "name": "Frostbox (Samsung Family Hub)",
-  "after_dependencies": ["smartthings", "conversation", "homekit"],
+  "after_dependencies": ["smartthings", "conversation", "homekit", "plex"],
   "codeowners": ["@coral-coder"],
   "config_flow": true,
-  "dependencies": ["http"],
+  "dependencies": ["ffmpeg", "http", "websocket_api"],
   "documentation": "https://github.com/coral-coder/frostbox",
   "integration_type": "device",
   "iot_class": "cloud_polling",

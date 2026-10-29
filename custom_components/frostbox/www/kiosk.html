@@ -9,6 +9,17 @@
   iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
   #saver { opacity: 0; pointer-events: none; transition: opacity 1.2s ease; background: #000; }
   #saver.on { opacity: 1; pointer-events: auto; }
+  #app { display: none; background: #0b0f14; }
+  #app.on { display: block; }
+  #dock { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 5; display: flex; gap: 6px;
+    padding: 8px; border-radius: 999px; background: rgba(20, 26, 34, 0.82); border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transition: opacity 0.4s, transform 0.4s; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #dock.hide { opacity: 0; pointer-events: none; transform: translate(-50%, 20px); }
+  #dock button { border: 0; background: transparent; color: #e8eef4; font: inherit; font-size: 19px; padding: 12px 22px;
+    border-radius: 999px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+  #dock button.on { background: #3ea6ff; color: #fff; }
+  #saver { z-index: 6; }
 </style>
 </head>
 <body>
@@ -21,11 +32,22 @@
   URL parameters (all optional):
     dashboard=/dashboard-frostbox/kitchen   dashboard path to show
     idle=180                                seconds without a touch before the screensaver
-    saver=matrix|aquarium|cycle|off         override the Screensaver entity
+    saver=matrix|aquarium|plex|cycle|off    override the Screensaver entity
     device=family_hub                       entity id prefix of the fridge
+    dock=0                                  hide the app dock
+
+  Apps (Live TV + guide, Plex) open from the dock, or from Home Assistant with
+  the frostbox.show_on_fridge action.
 -->
 <iframe id="dash" title="Dashboard"></iframe>
+<iframe id="app" title="App"></iframe>
 <iframe id="saver" title="Screensaver"></iframe>
+<nav id="dock">
+  <button data-app="home" class="on">⌂ Home</button>
+  <button data-app="tv">📺 Live TV</button>
+  <button data-app="guide">☰ Guide</button>
+  <button data-app="plex">▶ Plex</button>
+</nav>
 <script>
 (() => {
   "use strict";
@@ -34,7 +56,8 @@
   const IDLE_MS = Math.max(15, Number(q.get("idle")) || 180) * 1000;
   const PREFIX = q.get("device") || "family_hub";
   const CYCLE_MS = 10 * 60 * 1000;
-  const SAVERS = ["matrix", "aquarium"];
+  const SAVERS = ["matrix", "aquarium", "plex"];
+  const SAVER_URL = { matrix: "matrix.html", aquarium: "aquarium.html", plex: "plex.html?mode=saver" };
   const base = location.pathname.replace(/[^/]*$/, "");
 
   const dash = document.getElementById("dash");
@@ -46,6 +69,12 @@
   let cycleIndex = 0;
   let cycleAt = 0;
   let doorWasOpen = false;
+  let busy = false; // an app (live TV) is playing: no screensaver
+  let requested = null; // screensaver explicitly asked for by an automation
+  let openApp = null;
+  const appFrame = document.getElementById("app");
+  const dock = document.getElementById("dock");
+  if (q.get("dock") === "0") dock.style.display = "none";
 
   function hass() {
     try {
@@ -89,12 +118,13 @@
   function start(name) {
     if (active === name) return;
     active = name;
-    saver.src = `${base}${name}.html`;
+    saver.src = `${base}${SAVER_URL[name] || name + ".html"}`;
     saver.classList.add("on");
   }
 
   function stop() {
     lastActivity = Date.now();
+    requested = null;
     if (!active) return;
     active = null;
     saver.classList.remove("on");
@@ -102,15 +132,60 @@
     setTimeout(() => { if (!active) saver.removeAttribute("src"); }, 1300);
   }
 
+  let dockTimer = null;
   function activity() {
     lastActivity = Date.now();
     if (active) stop();
+    dock.classList.remove("hide");
+    clearTimeout(dockTimer);
+    // While watching TV the dock gets out of the way after a few seconds.
+    dockTimer = setTimeout(() => { if (busy) dock.classList.add("hide"); }, 6000);
   }
 
+  // ---- apps --------------------------------------------------------------
+  function markDock(name) {
+    dock.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.app === (name || "home")));
+  }
+
+  function closeApp() {
+    openApp = null;
+    busy = false;
+    appFrame.classList.remove("on");
+    appFrame.removeAttribute("src");
+    markDock("home");
+  }
+
+  function launch(name, opts) {
+    opts = opts || {};
+    activity();
+    if (name === "home") return closeApp();
+    if (name === "screensaver") return start(SAVERS.includes(choice(hass())) ? choice(hass()) : "aquarium");
+    if (name === "tv" && openApp === "tv" && opts.channel && appFrame.contentWindow) {
+      appFrame.contentWindow.postMessage({ type: "frostbox-tv", channel: String(opts.channel) }, location.origin);
+      return;
+    }
+    let src;
+    if (name === "tv") src = `${base}tv.html${opts.channel ? "?channel=" + encodeURIComponent(opts.channel) : ""}`;
+    else if (name === "guide") src = `${base}tv.html#guide`;
+    else if (name === "plex") src = `${base}plex.html`;
+    else return;
+    openApp = name === "guide" ? "tv" : name;
+    appFrame.src = src;
+    appFrame.classList.add("on");
+    markDock(name);
+  }
+
+  dock.addEventListener("click", (ev) => {
+    const b = ev.target.closest("button[data-app]");
+    if (b) launch(b.dataset.app);
+  });
+  appFrame.addEventListener("load", () => hookFrame(appFrame));
+
   // Touches inside the dashboard iframe (same origin, so we can listen in).
-  function hookDashboard() {
+  function hookDashboard() { hookFrame(dash); }
+  function hookFrame(frame) {
     try {
-      const doc = dash.contentDocument;
+      const doc = frame.contentDocument;
       ["pointerdown", "touchstart", "keydown", "wheel"].forEach((e) =>
         doc.addEventListener(e, activity, { passive: true, capture: true })
       );
@@ -119,7 +194,10 @@
   dash.addEventListener("load", hookDashboard);
   ["pointerdown", "touchstart", "keydown"].forEach((e) => addEventListener(e, activity, { passive: true }));
   addEventListener("message", (ev) => {
-    if (ev.origin === location.origin && ev.data && ev.data.type === "frostbox-wake") activity();
+    if (ev.origin !== location.origin || !ev.data) return;
+    if (ev.data.type === "frostbox-wake") activity();
+    else if (ev.data.type === "frostbox-close") closeApp();
+    else if (ev.data.type === "frostbox-busy") { busy = !!ev.data.busy; activity(); }
   });
 
   let subscribed = false;
@@ -130,9 +208,15 @@
     h.connection.subscribeEvents((ev) => {
       const d = ev.data || {};
       if (d.action === "stop") return stop();
-      const want = d.saver || choice(hass());
+      requested = d.saver && SAVERS.includes(d.saver) ? d.saver : null;
+      const want = requested || choice(hass());
       start(SAVERS.includes(want) ? want : SAVERS[0]);
     }, "frostbox_screensaver").catch(() => { subscribed = false; });
+    // frostbox.show_on_fridge: open Live TV on a channel, the guide, Plex, or go home.
+    h.connection.subscribeEvents((ev) => {
+      const d = ev.data || {};
+      if (d.app) launch(d.app, { channel: d.channel });
+    }, "frostbox_kiosk_app").catch(() => { subscribed = false; });
   }
 
   function loop() {
@@ -145,7 +229,7 @@
     doorWasOpen = doorOpen;
 
     const want = choice(h);
-    if (!active && want !== "off" && now - lastActivity > IDLE_MS) {
+    if (!active && !busy && want !== "off" && now - lastActivity > IDLE_MS) {
       if (want === "cycle") {
         start(SAVERS[cycleIndex % SAVERS.length]);
         cycleAt = now;
@@ -157,7 +241,7 @@
       cycleAt = now;
       active = null;
       start(SAVERS[cycleIndex % SAVERS.length]);
-    } else if (active && want !== "cycle" && want !== "off" && SAVERS.includes(want) && want !== active) {
+    } else if (active && !requested && want !== "cycle" && want !== "off" && SAVERS.includes(want) && want !== active) {
       start(want); // changed from the phone while running
     } else if (active && want === "off") {
       stop();

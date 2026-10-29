@@ -169,3 +169,35 @@ automation:
           "on": "{{ trigger.id == 'on' }}"
         response_variable: result
       - set_conversation_response: "{{ result.speech }}"
+
+  - id: frostbox_assist_fridge_tv
+    alias: "Frostbox · Assist · TV on the fridge"
+    triggers:
+      - trigger: conversation
+        command:
+          - "(put|turn) [on] {channel} on the fridge"
+          - "watch {channel} on the fridge"
+        id: tv
+      - trigger: conversation
+        command:
+          - "show [the] [tv] guide on the fridge"
+        id: guide
+      - trigger: conversation
+        command:
+          - "show (plex|what's new) on the fridge"
+        id: plex
+      - trigger: conversation
+        command:
+          - "turn off [the] fridge (tv|television)"
+          - "stop [the] tv on the fridge"
+        id: home
+    actions:
+      - action: frostbox.show_on_fridge
+        data:
+          app: "{{ trigger.id }}"
+          channel: "{{ trigger.slots.channel | default('') }}"
+      - set_conversation_response: >-
+          {% if trigger.id == 'tv' %}Putting {{ trigger.slots.channel }} on the fridge.
+          {% elif trigger.id == 'guide' %}Here's the TV guide.
+          {% elif trigger.id == 'plex' %}Here's what's new on Plex.
+          {% else %}Turned off the fridge TV.{% endif %}

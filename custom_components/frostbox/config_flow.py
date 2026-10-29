@@ -30,13 +30,17 @@ from .const import (
     CONF_DOOR_AJAR_SECONDS,
     CONF_EXPIRY_WARNING_DAYS,
     CONF_GROCERY_HOURS,
+    CONF_HDHOMERUN_HOST,
     CONF_LOCATION_ID,
     CONF_PARTY_FLEX_MODE,
     CONF_PARTY_HOURS,
+    CONF_PLEX_TOKEN,
+    CONF_PLEX_URL,
     CONF_RECIPE_AGENT,
     CONF_SCAN_INTERVAL,
     CONF_SHOPPING_LIST,
     CONF_TOKEN,
+    CONF_TV_QUALITY,
     CONF_VIEW_INSIDE_TOKEN,
     CONF_VIEW_INSIDE_URL,
     CONF_VIRTUAL_SWITCHES,
@@ -47,6 +51,7 @@ from .const import (
     DEFAULT_PARTY_HOURS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SHOPPING_LIST,
+    DEFAULT_TV_QUALITY,
     DOMAIN,
 )
 
@@ -221,6 +226,18 @@ class FrostboxOptionsFlow(OptionsFlowWithReload):
                 vol.Optional(
                     CONF_RECIPE_AGENT, description={"suggested_value": o.get(CONF_RECIPE_AGENT)}
                 ): selector.ConversationAgentSelector(),
+                vol.Optional(
+                    CONF_HDHOMERUN_HOST, description={"suggested_value": o.get(CONF_HDHOMERUN_HOST)}
+                ): selector.TextSelector(),
+                vol.Optional(
+                    CONF_TV_QUALITY, default=o.get(CONF_TV_QUALITY, DEFAULT_TV_QUALITY)
+                ): selector.SelectSelector(selector.SelectSelectorConfig(options=["480p", "720p", "1080p"])),
+                vol.Optional(
+                    CONF_PLEX_URL, description={"suggested_value": o.get(CONF_PLEX_URL)}
+                ): selector.TextSelector(),
+                vol.Optional(
+                    CONF_PLEX_TOKEN, description={"suggested_value": o.get(CONF_PLEX_TOKEN)}
+                ): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
             }
         )
         return self.async_show_form(step_id="init", data_schema=schema)

@@ -33,6 +33,7 @@ from .const import (
     DEFAULT_SHOPPING_LIST,
     DOMAIN,
     EVENT_INVENTORY,
+    EVENT_KIOSK_APP,
     LOCATIONS,
     MODES,
 )
@@ -87,6 +88,12 @@ MODE_SCHEMA = vol.Schema(
         vol.Required("mode"): vol.In(MODES),
         vol.Optional("on", default=True): cv.boolean,
         vol.Optional("hours"): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=24 * 30)),
+    }
+)
+SHOW_SCHEMA = vol.Schema(
+    {
+        vol.Required("app"): vol.In(["home", "tv", "guide", "plex", "screensaver"]),
+        vol.Optional("channel"): vol.Any(None, cv.string),
     }
 )
 COMMAND_SCHEMA = vol.Schema(
@@ -390,7 +397,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             "summary": summarize(parsed, definitions),
         }
 
+    async def show_on_fridge(call: ServiceCall) -> None:
+        """Tell the fridge kiosk page to open an app (e.g. Live TV on a channel)."""
+        hass.bus.async_fire(EVENT_KIOSK_APP, {k: v for k, v in call.data.items() if v not in (None, "")})
+
     reg = hass.services.async_register
+    reg(DOMAIN, "show_on_fridge", show_on_fridge, SHOW_SCHEMA)
     reg(DOMAIN, "add_item", add_item, ADD_SCHEMA, SupportsResponse.OPTIONAL)
     reg(DOMAIN, "add_leftover", add_leftover, LEFTOVER_SCHEMA, SupportsResponse.OPTIONAL)
     reg(DOMAIN, "consume_item", consume_item, CONSUME_SCHEMA, SupportsResponse.OPTIONAL)

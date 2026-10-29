@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frostbox · Plex</title>
+<style>
+  :root { --bg: #0d0f12; --panel: #171b21; --line: #262c35; --text: #f2f4f7; --muted: #98a2b3; --plex: #e5a00d; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); overflow: hidden;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+  button { font: inherit; color: inherit; background: #ffffff14; border: 1px solid #ffffff24; border-radius: 14px;
+    padding: 12px 20px; font-size: 20px; cursor: pointer; }
+
+  /* ---------- app mode ---------- */
+  #app { height: 100%; overflow-y: auto; padding-bottom: 120px; }
+  #hero { position: relative; height: 46vh; min-height: 320px; background: #000 center/cover no-repeat; transition: background-image 0.8s; }
+  #hero::after { content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(13,15,18,0.95) 0%, rgba(13,15,18,0.55) 45%, rgba(13,15,18,0.1) 100%),
+                linear-gradient(0deg, var(--bg) 0%, transparent 35%); }
+  #heroText { position: absolute; z-index: 1; left: 40px; bottom: 40px; max-width: min(760px, 70vw); }
+  #heroText .kicker { color: var(--plex); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 16px; }
+  #heroText h1 { font-size: 52px; margin: 8px 0; line-height: 1.05; }
+  #heroText .meta { color: #d0d5dd; font-size: 20px; }
+  #heroText p { font-size: 19px; line-height: 1.45; color: #d0d5dd; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  #top { position: absolute; z-index: 2; top: 18px; left: 20px; right: 20px; display: flex; gap: 12px; align-items: center; }
+  #top .spacer { flex: 1; }
+  #top .brand { font-size: 24px; font-weight: 700; }
+  #top .brand span { color: var(--plex); }
+
+  .row { padding: 10px 0 6px; }
+  .row h2 { font-size: 24px; margin: 14px 40px 12px; }
+  .strip { display: flex; gap: 18px; overflow-x: auto; padding: 0 40px 10px; scroll-snap-type: x proximity; scroll-padding: 0 40px; }
+  .strip::after { content: ""; flex: 0 0 22px; }
+  .strip::-webkit-scrollbar { height: 0; }
+  .tile { flex: 0 0 auto; width: 200px; scroll-snap-align: start; cursor: pointer; }
+  .tile.wide { width: 340px; }
+  .poster { width: 200px; height: 300px; border-radius: 12px; background: var(--panel) center/cover no-repeat; position: relative;
+    box-shadow: 0 6px 24px #0008; }
+  .tile.wide .poster { width: 340px; height: 191px; }
+  .badge { position: absolute; top: 8px; right: 8px; background: var(--plex); color: #111; font-weight: 700; font-size: 14px;
+    border-radius: 999px; padding: 3px 10px; }
+  .progress { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 5px; background: #0009; border-radius: 3px; overflow: hidden; }
+  .progress i { display: block; height: 100%; background: var(--plex); }
+  .tile .t { font-size: 18px; font-weight: 600; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .s { font-size: 15px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #msg { padding: 60px 40px; font-size: 22px; color: var(--muted); }
+
+  /* ---------- screensaver mode ---------- */
+  body.saver { cursor: none; }
+  body.saver #app { display: none; }
+  #saver { display: none; position: fixed; inset: 0; }
+  body.saver #saver { display: block; }
+  .slide { position: absolute; inset: -4%; background: #000 center/cover no-repeat; opacity: 0; transition: opacity 2s ease; }
+  .slide.on { opacity: 1; animation: kenburns 16s ease-out forwards; }
+  @keyframes kenburns { from { transform: scale(1.0) translate(0, 0); } to { transform: scale(1.08) translate(-1.5%, -1%); } }
+  #saverShade { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 55%); }
+  #saverText { position: absolute; left: 6vmin; bottom: 7vmin; right: 6vmin; transition: opacity 1s; }
+  #saverText .kicker { color: var(--plex); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 2.4vmin; }
+  #saverText h1 { font-size: 7vmin; margin: 1vmin 0; line-height: 1.05; text-shadow: 0 2px 20px #000; }
+  #saverText .meta { font-size: 2.8vmin; color: #e4e7ec; }
+  #saverClock { position: absolute; top: 4vmin; right: 5vmin; font-size: 7vmin; font-weight: 200; text-shadow: 0 2px 20px #000; }
+  #saverFridge { position: absolute; top: 12.5vmin; right: 5vmin; font-size: 2.6vmin; color: #e4e7ec; text-align: right; text-shadow: 0 2px 12px #000; }
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="hero">
+    <div id="top">
+      <button id="home" title="Back">⌂</button>
+      <div class="brand">Frostbox <span>Plex</span></div>
+      <span class="spacer"></span>
+      <button id="reload">↻</button>
+    </div>
+    <div id="heroText"><div class="kicker" id="heroKicker"></div><h1 id="heroTitle">Loading…</h1><div class="meta" id="heroMeta"></div><p id="heroText2"></p></div>
+  </section>
+  <div id="rows"></div>
+  <div id="msg" hidden></div>
+</div>
+
+<div id="saver">
+  <div class="slide" id="s0"></div><div class="slide" id="s1"></div>
+  <div id="saverShade"></div>
+  <div id="saverClock"></div>
+  <div id="saverFridge"></div>
+  <div id="saverText"><div class="kicker" id="sKicker"></div><h1 id="sTitle"></h1><div class="meta" id="sMeta"></div></div>
+</div>
+
+<script src="frostbox.js"></script>
+<script>
+(() => {
+  "use strict";
+  const F = window.Frostbox;
+  const $ = (id) => document.getElementById(id);
+  const saverMode = new URLSearchParams(location.search).get("mode") === "saver" || window.FROSTBOX_SAVER;
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let data = null;
+
+  function featured() {
+    if (!data) return [];
+    const shows = data.shows.map((s) => ({ kicker: s.new_episodes > 1 ? `${s.new_episodes} new episodes` : "New episode", title: s.title, meta: s.latest || "", text: "", art: s.art || s.thumb }));
+    const movies = data.movies.map((m) => ({ kicker: "New movie", title: m.title, meta: [m.year, m.rating, m.duration_min ? m.duration_min + " min" : ""].filter(Boolean).join(" · "), text: m.summary, art: m.art || m.thumb }));
+    // Interleave so the slideshow alternates shows and movies.
+    const out = [];
+    for (let i = 0; i < Math.max(shows.length, movies.length); i++) {
+      if (shows[i]) out.push(shows[i]);
+      if (movies[i]) out.push(movies[i]);
+    }
+    return out.filter((x) => x.art);
+  }
+
+  // ---------- app ----------
+  function tile(item, opts) {
+    const wide = opts && opts.wide;
+    const img = (wide ? item.art || item.thumb : item.thumb) || "";
+    const badge = item.new_episodes > 1 ? `<span class="badge">${item.new_episodes} new</span>` : "";
+    const progress = item.progress ? `<div class="progress"><i style="width:${(item.progress * 100).toFixed(0)}%"></i></div>` : "";
+    const sub = item.latest || item.subtitle || [item.year, item.rating].filter(Boolean).join(" · ");
+    return `<div class="tile${wide ? " wide" : ""}"><div class="poster" style="background-image:url('${esc(img)}')">${badge}${progress}</div>
+      <div class="t">${esc(item.title)}</div><div class="s">${esc(sub)}</div></div>`;
+  }
+
+  function renderApp() {
+    const rows = [];
+    if (data.continue.length) rows.push(`<div class="row"><h2>Continue watching</h2><div class="strip">${data.continue.map((i) => tile(i, { wide: true })).join("")}</div></div>`);
+    if (data.shows.length) rows.push(`<div class="row"><h2>New episodes</h2><div class="strip">${data.shows.map((i) => tile(i)).join("")}</div></div>`);
+    if (data.movies.length) rows.push(`<div class="row"><h2>New movies</h2><div class="strip">${data.movies.map((i) => tile(i)).join("")}</div></div>`);
+    $("rows").innerHTML = rows.join("");
+    if (!rows.length) msg("Nothing new on Plex yet.");
+    rotateHero();
+  }
+
+  let heroIndex = 0;
+  function rotateHero() {
+    const list = featured();
+    if (!list.length) { $("heroTitle").textContent = "Plex"; return; }
+    const f = list[heroIndex % list.length];
+    heroIndex++;
+    $("hero").style.backgroundImage = `url('${f.art}')`;
+    $("heroKicker").textContent = f.kicker;
+    $("heroTitle").textContent = f.title;
+    $("heroMeta").textContent = f.meta;
+    $("heroText2").textContent = f.text || "";
+  }
+
+  function msg(text) {
+    $("msg").hidden = !text;
+    $("msg").textContent = text || "";
+  }
+
+  // ---------- screensaver ----------
+  let slideIndex = 0, front = 0;
+  function nextSlide() {
+    const list = featured();
+    if (!list.length) return;
+    const f = list[slideIndex % list.length];
+    slideIndex++;
+    const img = new Image();
+    img.onload = () => {
+      front = 1 - front;
+      const el = $("s" + front), old = $("s" + (1 - front));
+      el.style.backgroundImage = `url('${f.art}')`;
+      el.classList.remove("on");
+      void el.offsetWidth; // restart the Ken Burns animation
+      el.classList.add("on");
+      old.classList.remove("on");
+      $("sKicker").textContent = f.kicker;
+      $("sTitle").textContent = f.title;
+      $("sMeta").textContent = f.meta;
+    };
+    img.src = f.art;
+  }
+  function saverClock() {
+    $("saverClock").textContent = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }).replace(/\s?[AP]M$/i, "");
+  }
+
+  // ---------- data ----------
+  async function load() {
+    try {
+      data = await F.callWS({ type: "frostbox/plex/new" });
+      msg("");
+      if (saverMode) { if (slideIndex === 0) nextSlide(); } else renderApp();
+    } catch (err) {
+      if (saverMode) { $("sTitle").textContent = "Plex"; $("sMeta").textContent = err.message; }
+      else { $("heroTitle").textContent = "Plex"; msg(err.message); }
+    }
+  }
+
+  // Fridge info from the kiosk (same payload the other screensavers get).
+  window.addEventListener("message", (ev) => {
+    if (ev.origin !== location.origin || !ev.data || ev.data.type !== "frostbox") return;
+    const d = ev.data.payload || {};
+    const parts = [];
+    if (d.fridge) parts.push(`Fridge ${d.fridge}`);
+    if (d.freezer) parts.push(`Freezer ${d.freezer}`);
+    $("saverFridge").textContent = (d.alert ? "⚠ " + d.alert + " · " : "") + parts.join(" · ");
+  });
+
+  if (saverMode) {
+    document.body.classList.add("saver");
+    ["pointerdown", "touchstart", "keydown"].forEach((e) =>
+      window.addEventListener(e, () => F.toKiosk("frostbox-wake"), { passive: true })
+    );
+    saverClock();
+    setInterval(saverClock, 10000);
+    setInterval(nextSlide, 15000);
+  } else {
+    $("home").onclick = () => F.toKiosk("frostbox-close");
+    $("reload").onclick = load;
+    setInterval(rotateHero, 12000);
+  }
+  load();
+  setInterval(load, 10 * 60000);
+})();
+</script>
+</body>
+</html>

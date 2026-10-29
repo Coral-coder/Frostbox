@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frostbox · Live TV</title>
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #141b23; --panel2: #1b2530; --line: #273341;
+    --text: #e8eef4; --muted: #8fa1b3; --accent: #3ea6ff; --live: #ff4d4d; --lock: #6b7785;
+    --row: 88px; --slot: 260px; --chan: 220px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; overflow: hidden; }
+  button { font: inherit; color: inherit; background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 20px; font-size: 20px; cursor: pointer; }
+  button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:active { transform: scale(0.97); }
+  #app { display: flex; flex-direction: column; height: 100%; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: var(--panel);
+    border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 26px; margin: 0 12px 0 4px; font-weight: 600; }
+  header .spacer { flex: 1; }
+  #clock { font-size: 24px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  #player { display: none; position: relative; background: #000; flex: 0 0 auto; }
+  #player.on { display: block; }
+  #player video { width: 100%; max-height: 62vh; aspect-ratio: 16 / 9; display: block; background: #000; }
+  #player.full { position: fixed; inset: 0; z-index: 10; }
+  #player.full video { max-height: none; height: 100%; }
+  #osd { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 20px; display: flex; gap: 14px;
+    align-items: center; background: linear-gradient(transparent, rgba(0,0,0,0.85)); transition: opacity 0.4s; }
+  #osd.hide { opacity: 0; pointer-events: none; }
+  #osd .now { flex: 1; min-width: 0; }
+  #osd .ch { font-size: 22px; font-weight: 600; }
+  #osd .oprog { font-size: 18px; color: #c9d4de; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: #fff; background: rgba(0,0,0,0.55); text-align: center; padding: 30px; }
+  #status[hidden] { display: none; }
+
+  main { flex: 1; overflow: auto; position: relative; }
+
+  /* Channels list */
+  #channels { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 12px; padding: 16px 20px 120px; }
+  .card { display: flex; gap: 16px; align-items: center; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; padding: 14px 16px; cursor: pointer; min-height: 96px; }
+  .card.playing { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .card.locked { opacity: 0.55; cursor: default; }
+  .logo { width: 88px; height: 56px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+    background: #fff1; border-radius: 10px; overflow: hidden; font-weight: 700; font-size: 20px; color: var(--muted); }
+  .logo img { max-width: 100%; max-height: 100%; }
+  .card .info { min-width: 0; flex: 1; }
+  .card .name { font-size: 18px; color: var(--muted); }
+  .card .name b { color: var(--text); margin-right: 8px; }
+  .card .title { font-size: 21px; font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .next { font-size: 16px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .tag { font-size: 13px; padding: 2px 7px; border-radius: 6px; background: var(--panel2); color: var(--muted); margin-left: 6px; vertical-align: 2px; }
+
+  /* Guide grid */
+  #guide { display: none; }
+  #guide.on { display: block; }
+  #guide .grid { position: relative; padding-bottom: 120px; }
+  .times { position: sticky; top: 0; z-index: 3; display: flex; background: var(--panel); border-bottom: 1px solid var(--line); height: 48px; }
+  .times .corner { position: sticky; left: 0; z-index: 4; width: var(--chan); flex: 0 0 var(--chan); background: var(--panel); }
+  .times .t { width: var(--slot); flex: 0 0 var(--slot); padding: 12px 10px; font-size: 18px; color: var(--muted); border-left: 1px solid var(--line); }
+  .grow { display: flex; height: var(--row); border-bottom: 1px solid var(--line); }
+  .grow .chan { position: sticky; left: 0; z-index: 2; width: var(--chan); flex: 0 0 var(--chan); display: flex; gap: 10px; align-items: center;
+    padding: 0 12px; background: var(--panel); border-right: 1px solid var(--line); font-size: 17px; cursor: pointer; }
+  .grow .chan .logo { width: 64px; height: 42px; font-size: 16px; }
+  .grow .chan.locked { opacity: 0.5; }
+  .lane { position: relative; flex: 0 0 auto; }
+  .prog { position: absolute; top: 6px; bottom: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 12px; overflow: hidden; cursor: pointer; }
+  .prog.now { background: #1e3a55; border-color: #2f6ea5; }
+  .prog .pt { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prog .ps { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nowline { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--live); z-index: 1; pointer-events: none; }
+
+  #sheet { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(760px, 92vw); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 20px; padding: 22px 26px; box-shadow: 0 12px 50px #000a; z-index: 20; display: none; }
+  #sheet.on { display: block; }
+  #sheet h2 { margin: 0 0 6px; font-size: 26px; }
+  #sheet .meta { color: var(--muted); font-size: 18px; margin-bottom: 10px; }
+  #sheet p { font-size: 19px; line-height: 1.4; margin: 0 0 16px; }
+  #empty { padding: 60px 30px; text-align: center; font-size: 22px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <button id="home" title="Back">⌂</button>
+    <h1>Live TV</h1>
+    <button id="tabChannels" class="on">Channels</button>
+    <button id="tabGuide">Guide</button>
+    <button id="favs">★ Favorites</button>
+    <span class="spacer"></span>
+    <span id="clock"></span>
+  </header>
+
+  <section id="player">
+    <video id="video" playsinline autoplay></video>
+    <div id="status" hidden></div>
+    <div id="osd">
+      <button id="chDown" title="Channel down">▼</button>
+      <button id="chUp" title="Channel up">▲</button>
+      <div class="now"><div class="ch" id="osdCh"></div><div class="oprog" id="osdProg"></div></div>
+      <button id="mute">🔊</button>
+      <button id="full">⛶</button>
+      <button id="stop">■ Stop</button>
+    </div>
+  </section>
+
+  <main id="main">
+    <div id="channels"></div>
+    <div id="guide"><div class="grid" id="grid"></div></div>
+    <div id="empty" hidden></div>
+  </main>
+</div>
+
+<div id="sheet">
+  <h2 id="sheetTitle"></h2>
+  <div class="meta" id="sheetMeta"></div>
+  <p id="sheetText"></p>
+  <button id="sheetWatch" class="on">▶ Watch</button>
+  <button id="sheetClose">Close</button>
+</div>
+
+<script src="vendor/hls.light.min.js"></script>
+<script src="frostbox.js"></script>
+<script>
+(() => {
+  "use strict";
+  const F = window.Frostbox;
+  const $ = (id) => document.getElementById(id);
+  const q = new URLSearchParams(location.search);
+  const HOURS = 4;
+  const SLOT = 30 * 60; // seconds per guide column
+
+  let channels = [];      // from frostbox/tv/guide (channel + programs)
+  let session = null;     // current HLS session id
+  let playing = null;     // channel number
+  let hls = null;
+  let favOnly = false;
+  try { favOnly = localStorage.getItem("frostbox.tv.favs") === "1"; } catch (e) { /* ignore */ }
+
+  F.clock($("clock"));
+
+  // ---------- helpers ----------
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const hhmm = (t) => new Date(t * 1000).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const nowS = () => Math.floor(Date.now() / 1000);
+
+  function current(ch, t) {
+    t = t || nowS();
+    return (ch.programs || []).find((p) => p.start <= t && p.end > t) || null;
+  }
+  function next(ch, t) {
+    t = t || nowS();
+    return (ch.programs || []).find((p) => p.start > t) || null;
+  }
+  function visible() {
+    return channels.filter((c) => !favOnly || c.favorite);
+  }
+  function logo(ch) {
+    return ch.image ? `<img src="${esc(ch.image)}" alt="" onerror="this.remove()">` : esc(ch.number);
+  }
+  function showEmpty(text) {
+    $("empty").hidden = !text;
+    $("empty").textContent = text || "";
+  }
+
+  // ---------- data ----------
+  async function load() {
+    try {
+      const data = await F.callWS({ type: "frostbox/tv/guide", hours: HOURS });
+      channels = data.channels;
+      if (!channels.length) showEmpty("No channels found on the HDHomeRun. Run a channel scan in the HDHomeRun app.");
+      else showEmpty(data.guide_error ? `Guide unavailable right now (${data.guide_error}). Channels still work.` : "");
+      render();
+    } catch (err) {
+      showEmpty(err.message);
+    }
+  }
+
+  // ---------- channel list ----------
+  function renderChannels() {
+    const t = nowS();
+    $("channels").innerHTML = visible().map((ch) => {
+      const p = current(ch, t), n = next(ch, t);
+      const pct = p ? Math.min(100, Math.max(0, ((t - p.start) / (p.end - p.start)) * 100)) : 0;
+      return `<div class="card${ch.drm ? " locked" : ""}${ch.number === playing ? " playing" : ""}" data-ch="${esc(ch.number)}">
+        <div class="logo">${logo(ch)}</div>
+        <div class="info">
+          <div class="name"><b>${esc(ch.number)}</b>${esc(ch.name)}${ch.hd ? '<span class="tag">HD</span>' : ""}${ch.drm ? '<span class="tag">🔒 protected</span>' : ""}</div>
+          <div class="title">${p ? esc(p.title) : "&nbsp;"}</div>
+          <div class="next">${n ? "Next " + hhmm(n.start) + " · " + esc(n.title) : ""}</div>
+          ${p ? `<div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>` : ""}
+        </div></div>`;
+    }).join("");
+  }
+
+  // ---------- guide grid ----------
+  function renderGuide() {
+    const t = nowS();
+    const t0 = Math.floor(t / SLOT) * SLOT;
+    const t1 = t0 + HOURS * 3600;
+    const slotPx = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--slot"), 10) || 260;
+    const px = (sec) => (sec / SLOT) * slotPx;
+    let html = '<div class="times"><div class="corner"></div>';
+    for (let s = t0; s < t1; s += SLOT) html += `<div class="t">${hhmm(s)}</div>`;
+    html += "</div>";
+    for (const ch of visible()) {
+      html += `<div class="grow"><div class="chan${ch.drm ? " locked" : ""}" data-ch="${esc(ch.number)}"><div class="logo">${logo(ch)}</div><div>${esc(ch.number)}<br><span style="color:var(--muted)">${esc(ch.name)}</span></div></div>`;
+      html += `<div class="lane" style="width:${px(t1 - t0)}px">`;
+      for (const p of ch.programs || []) {
+        const s = Math.max(p.start, t0), e = Math.min(p.end, t1);
+        if (e <= s) continue;
+        const live = p.start <= t && p.end > t;
+        html += `<div class="prog${live ? " now" : ""}" data-ch="${esc(ch.number)}" data-start="${p.start}" style="left:${px(s - t0) + 2}px;width:${Math.max(px(e - s) - 4, 20)}px">
+          <div class="pt">${esc(p.title)}</div><div class="ps">${hhmm(p.start)}${p.episode ? " · " + esc(p.episode) : ""}</div></div>`;
+      }
+      if (!(ch.programs || []).length) {
+        html += `<div class="prog" data-ch="${esc(ch.number)}" style="left:2px;width:${px(t1 - t0) - 4}px"><div class="pt">${esc(ch.name)}</div><div class="ps">No guide data</div></div>`;
+      }
+      html += "</div></div>";
+    }
+    html += `<div class="nowline" style="left:calc(var(--chan) + ${px(t - t0)}px)"></div>`;
+    $("grid").innerHTML = html;
+  }
+
+  function render() {
+    renderChannels();
+    if ($("guide").classList.contains("on")) renderGuide();
+  }
+
+  // ---------- details sheet ----------
+  let sheetCh = null;
+  function openSheet(ch, p) {
+    sheetCh = ch;
+    $("sheetTitle").textContent = p ? p.title : ch.name;
+    $("sheetMeta").textContent = p
+      ? `${ch.number} ${ch.name} · ${hhmm(p.start)}–${hhmm(p.end)}${p.episode_number ? " · " + p.episode_number : ""}${p.episode ? " · " + p.episode : ""}`
+      : `${ch.number} ${ch.name}`;
+    $("sheetText").textContent = (p && p.synopsis) || "";
+    const live = !p || (p.start <= nowS() && p.end > nowS());
+    $("sheetWatch").style.display = live && !ch.drm ? "" : "none";
+    $("sheet").classList.add("on");
+  }
+  $("sheetClose").onclick = () => $("sheet").classList.remove("on");
+  $("sheetWatch").onclick = () => { $("sheet").classList.remove("on"); if (sheetCh) watch(sheetCh.number); };
+
+  // ---------- playback ----------
+  function status(text) {
+    $("status").hidden = !text;
+    $("status").textContent = text || "";
+  }
+
+  function findChannel(wanted) {
+    const w = String(wanted).trim().toLowerCase();
+    return channels.find((c) => c.number === w)
+      || channels.find((c) => c.name.toLowerCase() === w)
+      || channels.find((c) => c.name.toLowerCase().startsWith(w))
+      || channels.find((c) => c.name.toLowerCase().includes(w));
+  }
+
+  async function watch(number) {
+    const ch = findChannel(number);
+    if (!ch) return;
+    if (ch.drm) { openSheet(ch, current(ch)); return; }
+    $("player").classList.add("on");
+    status(`Tuning ${ch.number} ${ch.name}…`);
+    osd(ch);
+    try {
+      const res = await F.callWS({ type: "frostbox/tv/watch", channel: ch.number, replace: session || undefined });
+      session = res.session;
+      playing = ch.number;
+      try { localStorage.setItem("frostbox.tv.last", ch.number); } catch (e) { /* ignore */ }
+      attach(res.url);
+      F.toKiosk("frostbox-busy", { busy: true });
+      renderChannels();
+    } catch (err) {
+      status(err.message);
+    }
+  }
+
+  function attach(url) {
+    const video = $("video");
+    if (hls) { hls.destroy(); hls = null; }
+    if (window.Hls && Hls.isSupported()) {
+      hls = new Hls({ liveSyncDurationCount: 3, maxBufferLength: 20, enableWorker: true });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { status(""); video.play().catch(() => status("Tap to play")); });
+      hls.on(Hls.Events.ERROR, (_e, data) => {
+        if (!data.fatal) return;
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+        else status("Playback failed. Try another channel.");
+      });
+      hls.loadSource(url);
+      hls.attachMedia(video);
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = url;
+      video.addEventListener("loadedmetadata", () => { status(""); video.play().catch(() => status("Tap to play")); }, { once: true });
+    } else {
+      status("This browser can't play live video.");
+    }
+  }
+
+  async function stop() {
+    const s = session;
+    session = null;
+    playing = null;
+    if (hls) { hls.destroy(); hls = null; }
+    $("video").removeAttribute("src");
+    $("video").load();
+    $("player").classList.remove("on", "full");
+    F.toKiosk("frostbox-busy", { busy: false });
+    renderChannels();
+    if (s) { try { await F.callWS({ type: "frostbox/tv/stop", session: s }); } catch (e) { /* idle timeout cleans up */ } }
+  }
+
+  function osd(ch, quiet) {
+    const p = current(ch);
+    $("osdCh").textContent = `${ch.number}  ${ch.name}`;
+    $("osdProg").textContent = p ? `${p.title}${p.episode ? " · " + p.episode : ""}  (${hhmm(p.start)}–${hhmm(p.end)})` : "";
+    if (!quiet) poke();
+  }
+  let osdTimer = null;
+  function poke() {
+    $("osd").classList.remove("hide");
+    clearTimeout(osdTimer);
+    osdTimer = setTimeout(() => { if (playing) $("osd").classList.add("hide"); }, 5000);
+  }
+  $("player").addEventListener("pointerdown", poke);
+  $("video").addEventListener("click", () => { $("video").play().catch(() => {}); });
+
+  function step(dir) {
+    const list = visible().filter((c) => !c.drm);
+    if (!list.length) return;
+    const i = Math.max(0, list.findIndex((c) => c.number === playing));
+    watch(list[(i + dir + list.length) % list.length].number);
+  }
+  $("chUp").onclick = () => step(1);
+  $("chDown").onclick = () => step(-1);
+  $("stop").onclick = stop;
+  $("mute").onclick = () => { const v = $("video"); v.muted = !v.muted; $("mute").textContent = v.muted ? "🔇" : "🔊"; };
+  $("full").onclick = () => $("player").classList.toggle("full");
+
+  // ---------- navigation ----------
+  function tab(name) {
+    $("tabChannels").classList.toggle("on", name === "channels");
+    $("tabGuide").classList.toggle("on", name === "guide");
+    $("channels").style.display = name === "channels" ? "" : "none";
+    $("guide").classList.toggle("on", name === "guide");
+    if (name === "guide") renderGuide();
+  }
+  $("tabChannels").onclick = () => tab("channels");
+  $("tabGuide").onclick = () => tab("guide");
+  $("favs").classList.toggle("on", favOnly);
+  $("favs").onclick = () => {
+    favOnly = !favOnly;
+    $("favs").classList.toggle("on", favOnly);
+    try { localStorage.setItem("frostbox.tv.favs", favOnly ? "1" : "0"); } catch (e) { /* ignore */ }
+    render();
+  };
+  $("home").onclick = async () => { await stop(); F.toKiosk("frostbox-close"); };
+
+  $("main").addEventListener("click", (ev) => {
+    const el = ev.target.closest("[data-ch]");
+    if (!el) return;
+    const ch = channels.find((c) => c.number === el.dataset.ch);
+    if (!ch) return;
+    if (el.classList.contains("prog") && el.dataset.start) {
+      const p = (ch.programs || []).find((x) => String(x.start) === el.dataset.start);
+      openSheet(ch, p);
+    } else {
+      watch(ch.number);
+    }
+  });
+
+  // The kiosk / automations can switch channels: frostbox.show_on_fridge app=tv channel=…
+  window.addEventListener("message", (ev) => {
+    if (ev.origin !== location.origin || !ev.data) return;
+    if (ev.data.type === "frostbox-tv" && ev.data.channel) watch(ev.data.channel);
+    if (ev.data.type === "frostbox-tv-stop") stop();
+  });
+  window.addEventListener("pagehide", () => { if (session) F.callWS({ type: "frostbox/tv/stop", session }).catch(() => {}); });
+
+  // ---------- start ----------
+  if (location.hash === "#guide") tab("guide");
+  load().then(() => {
+    const want = q.get("channel");
+    if (want) watch(want);
+  });
+  setInterval(() => { render(); if (playing) { const ch = channels.find((c) => c.number === playing); if (ch) osd(ch, true); } }, 60000);
+  setInterval(load, 15 * 60000);
+})();
+</script>
+</body>
+</html>

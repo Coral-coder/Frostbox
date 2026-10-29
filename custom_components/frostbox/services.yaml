@@ -174,3 +174,15 @@ send_command:
 dump_capabilities:
   fields:
     config_entry_id: *entry
+
+show_on_fridge:
+  fields:
+    app:
+      required: true
+      selector:
+        select:
+          options: [home, tv, guide, plex, screensaver]
+    channel:
+      example: "4.1"
+      selector:
+        text:
