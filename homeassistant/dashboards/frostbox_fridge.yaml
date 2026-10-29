@@ -105,6 +105,24 @@ views:
             name: Ice
             vertical: true
           - type: tile
+            entity: switch.family_hub_autofill_pitcher
+            name: AutoFill pitcher
+            vertical: true
+          - type: tile
+            entity: switch.family_hub_auto_open_door
+            name: Auto Open Door
+            vertical: true
+          - type: tile
+            entity: switch.family_hub_ice_maker_night_mode
+            name: Ice night mode
+            vertical: true
+          - type: tile
+            entity: sensor.family_hub_ice_maker_status
+            name: Ice
+          - type: tile
+            entity: sensor.family_hub_ice_bites_maker_status
+            name: Ice Bites
+          - type: tile
             entity: select.family_hub_screensaver
             name: Screensaver
             features:
@@ -156,6 +174,16 @@ views:
             entity: camera.family_hub_inside_camera
             show_name: false
             camera_view: auto
+          - type: button
+            entity: button.family_hub_take_inside_photos
+            name: Take new photos
+            icon: mdi:camera-retake
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.family_hub_take_inside_photos
           - type: todo-list
             entity: todo.shopping_list
             title: Shopping list

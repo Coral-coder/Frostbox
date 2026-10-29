@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -23,6 +25,10 @@ async def async_setup_entry(
         Refresh(coordinator),
         StartScreensaver(coordinator),
     ]
+    if coordinator.data.components_with("samsungce.viewInside"):
+        entities.append(RefreshInsidePhotos(coordinator))
+    if coordinator.data.components_with("samsungce.fridgeFoodList"):
+        entities.append(RefreshFoodList(coordinator))
     if coordinator.data.components_with("custom.waterFilter", "waterFilterUsage"):
         entities.append(ResetWaterFilter(coordinator))
     async_add_entities(entities)
@@ -101,3 +107,32 @@ class StartScreensaver(FrostboxEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         self.hass.bus.async_fire(EVENT_SCREENSAVER, {"action": "start"})
+
+
+class RefreshInsidePhotos(FrostboxEntity, ButtonEntity):
+    """Ask the fridge to take fresh inside photos (all shelves)."""
+
+    _attr_name = "Take inside photos"
+    _attr_icon = "mdi:camera-retake"
+
+    def __init__(self, coordinator: FrostboxCoordinator) -> None:
+        super().__init__(coordinator, "refresh_inside_photos")
+
+    async def async_press(self) -> None:
+        comp = self.coordinator.data.components_with("samsungce.viewInside")[0]
+        await self.coordinator.async_command(comp, "samsungce.viewInside", "refreshAll")
+
+
+class RefreshFoodList(FrostboxEntity, ButtonEntity):
+    """Ask the fridge to re-sync its AI Vision food list with Samsung's cloud."""
+
+    _attr_name = "Refresh food list"
+    _attr_icon = "mdi:food-apple-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: FrostboxCoordinator) -> None:
+        super().__init__(coordinator, "refresh_food_list")
+
+    async def async_press(self) -> None:
+        comp = self.coordinator.data.components_with("samsungce.fridgeFoodList")[0]
+        await self.coordinator.async_command(comp, "samsungce.fridgeFoodList", "refresh", [uuid.uuid4().hex])

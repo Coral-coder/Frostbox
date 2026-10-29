@@ -203,7 +203,7 @@ class ViewInsideCamera(FrostboxCamera):
         matching = [c for c in contents if _area(c) == self.focus_area] or contents
         if not matching:
             return None
-        return max(matching, key=lambda c: str(c.get("createdTime") or ""))
+        return max(matching, key=lambda c: str(c.get("updatedTime") or c.get("createdTime") or ""))
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -231,7 +231,7 @@ class ViewInsideCamera(FrostboxCamera):
         attrs = {**super().extra_state_attributes, "focus_area": self.focus_area}
         if current:
             attrs["file_id"] = current.get("fileId")
-            attrs["taken"] = current.get("createdTime")
+            attrs["taken"] = current.get("updatedTime") or current.get("createdTime")
         if not self.coordinator.config_entry.options.get(CONF_VIEW_INSIDE_URL):
             attrs["setup"] = "Set a camera source or the View Inside URL template in Frostbox options"
         return attrs

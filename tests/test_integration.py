@@ -282,3 +282,60 @@ async def test_dump_capabilities_includes_definitions(hass: HomeAssistant, setup
     assert "samsungce.meatAging" not in summary  # unavailable on this model
     assert "samsungce.weightMeasurement" not in summary  # scale component is disabled
     assert "contactSensor" not in summary  # already mapped
+
+
+async def test_samsung_features_from_real_dump(hass: HomeAssistant, setup_fridge, fake_api) -> None:
+    """Controls mapped from the real RF90F29AEWAA capability summary."""
+    assert hass.states.get(_eid(hass, "switch", "autofill_pitcher")).state == STATE_ON
+    assert hass.states.get(_eid(hass, "switch", "auto_open_door")).state == STATE_ON
+    assert hass.states.get(_eid(hass, "switch", "door_alarm")).state == STATE_ON
+    assert hass.states.get(_eid(hass, "switch", "ai_precise_cooling")).state == STATE_OFF
+    assert hass.states.get(_eid(hass, "switch", "icemaker_night_mode")).state == STATE_OFF
+    assert hass.states.get(_eid(hass, "switch", "lights_brighten_gradually")).state == STATE_ON
+    reg = er.async_get(hass)
+    # Reported as null on this model: no entity.
+    assert reg.async_get_entity_id("switch", DOMAIN, f"{FRIDGE}_interior_lighting") is None
+    assert reg.async_get_entity_id("switch", DOMAIN, f"{FRIDGE}_night_light") is None
+
+    assert (
+        hass.states.get(_eid(hass, "sensor", "icemaker_samsungce.fridgeIcemakerOperatingState_operatingState")).state
+        == "running"
+    )
+    assert (
+        float(hass.states.get(_eid(hass, "sensor", "main_samsungce.energyManagement_thisMonthEnergyConsumption")).state)
+        == 2.432
+    )
+    assert hass.states.get(_eid(hass, "binary_sensor", "software_update")).state == STATE_OFF
+
+    await hass.services.async_call(
+        "switch", "turn_off", {"entity_id": _eid(hass, "switch", "autofill_pitcher")}, blocking=True
+    )
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": _eid(hass, "switch", "defrost_delay")}, blocking=True
+    )
+    await hass.services.async_call(
+        "button", "press", {"entity_id": _eid(hass, "button", "refresh_inside_photos")}, blocking=True
+    )
+    await hass.services.async_call(
+        "button", "press", {"entity_id": _eid(hass, "button", "refresh_food_list")}, blocking=True
+    )
+    sent = [(c[1], c[2], c[3], c[4]) for c in fake_api.commands]
+    assert ("main", "samsungce.autoFillPitcher", "off", None) in sent
+    assert ("main", "samsungce.defrostDelay", "setDefrostDelay", ["on"]) in sent
+    assert ("main", "samsungce.viewInside", "refreshAll", None) in sent
+    food = [c for c in sent if c[1] == "samsungce.fridgeFoodList"]
+    assert food and food[0][2] == "refresh" and len(food[0][3][0]) == 32
+
+
+async def test_shipped_configs_reference_real_entities(hass: HomeAssistant, setup_fridge) -> None:
+    """Every family_hub_* entity in the dashboard and HomeKit package must exist."""
+    from pathlib import Path
+    import re
+
+    root = Path(__file__).parent.parent / "homeassistant"
+    files = [root / "dashboards/frostbox_fridge.yaml", root / "packages/frostbox_homekit.yaml"]
+    text = "\n".join([await hass.async_add_executor_job(f.read_text) for f in files])
+    referenced = set(re.findall(r"\b[a-z_]+\.family_hub_[a-z0-9_]+", text))
+    existing = {e.entity_id for e in er.async_entries_for_config_entry(er.async_get(hass), setup_fridge.entry_id)}
+    assert referenced, "no entity references found"
+    assert referenced - existing == set()

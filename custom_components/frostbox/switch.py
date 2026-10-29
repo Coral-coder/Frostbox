@@ -11,6 +11,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import MODE_GROCERY, MODE_PARTY, MODE_VACATION, MODES
 from .coordinator import FrostboxCoordinator
 from .entity import FrostboxEntity
+from .features import ON_OFF_FEATURES, OnOffFeature
 from .models import FrostboxConfigEntry
 from .status import component_label
 
@@ -39,6 +40,12 @@ async def async_setup_entry(
     for comp in coordinator.data.components_with("switch", "switch"):
         if comp.startswith("icemaker"):
             entities.append(IceMakerSwitch(coordinator, comp))
+    st = coordinator.data
+    for feature in ON_OFF_FEATURES:
+        comps = st.components_with(feature.capability, feature.attribute)
+        comps = [c for c in comps if st.value(c, feature.capability, feature.attribute) is not None]
+        if comps:
+            entities.append(FeatureSwitch(coordinator, feature, "main" if "main" in comps else comps[0]))
     entities += [ModeSwitch(coordinator, mode) for mode in MODES]
     async_add_entities(entities)
 
@@ -59,6 +66,36 @@ class ToggleSwitch(FrostboxEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self.coordinator.async_set_toggle(self._ref_fn(), False)
+
+
+class FeatureSwitch(FrostboxEntity, SwitchEntity):
+    """A Samsung on/off feature (AutoFill pitcher, Auto Open Door, door alarm, ...)."""
+
+    def __init__(self, coordinator: FrostboxCoordinator, feature: OnOffFeature, component: str) -> None:
+        super().__init__(coordinator, feature.key)
+        self._feature = feature
+        self._component = component
+        self._attr_name = feature.name
+        self._attr_icon = feature.icon
+        self._attr_entity_category = feature.category
+
+    @property
+    def is_on(self) -> bool | None:
+        f = self._feature
+        return self.coordinator.is_on((self._component, f.capability, f.attribute))
+
+    async def _set(self, on: bool) -> None:
+        f = self._feature
+        if f.setter:
+            await self.coordinator.async_command(self._component, f.capability, f.setter, ["on" if on else "off"])
+        else:
+            await self.coordinator.async_command(self._component, f.capability, "on" if on else "off")
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._set(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._set(False)
 
 
 class IceMakerSwitch(FrostboxEntity, SwitchEntity):

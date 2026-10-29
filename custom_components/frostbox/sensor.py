@@ -26,6 +26,7 @@ from homeassistant.util import dt as dt_util
 from .const import CONF_EXPIRY_WARNING_DAYS, DEFAULT_EXPIRY_WARNING_DAYS
 from .coordinator import FrostboxCoordinator
 from .entity import FrostboxEntity
+from .features import MAPPED_ATTRIBUTES
 from .inventory import Inventory
 from .models import FrostboxConfigEntry
 from .status import AttributeRef, component_label
@@ -120,13 +121,51 @@ async def async_setup_entry(
         ExpiredItems(coordinator, inventory),
     ]
 
+    for comp in status.components_with("samsungce.fridgeIcemakerOperatingState", "operatingState"):
+        entities.append(
+            SimpleSensor(
+                coordinator,
+                AttributeRef(comp, "samsungce.fridgeIcemakerOperatingState", "operatingState"),
+                f"{component_label(comp)} status",
+                {"icon": "mdi:cube-scan"},
+                str,
+            )
+        )
+    for attr, name in (
+        ("thisMonthEnergyConsumption", "Energy this month"),
+        ("lastMonthEnergyConsumption", "Energy last month"),
+    ):
+        for comp in status.components_with("samsungce.energyManagement", attr):
+            entities.append(
+                SimpleSensor(
+                    coordinator,
+                    AttributeRef(comp, "samsungce.energyManagement", attr),
+                    name,
+                    {
+                        "device_class": SensorDeviceClass.ENERGY,
+                        "native_unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                        "suggested_display_precision": 1,
+                        # Resets every month; TOTAL_INCREASING treats the drop as a new cycle.
+                        "state_class": SensorStateClass.TOTAL_INCREASING if attr.startswith("this") else None,
+                    },
+                    _wh_to_kwh,
+                )
+            )
+            break
+
     for ref, value in status.iter_attributes():
+        if (ref.capability, ref.attribute) in MAPPED_ATTRIBUTES:
+            continue
         if (ref.capability, ref.attribute) in MAPPED or ref.capability in SKIP_CAPABILITIES:
             continue
         if isinstance(value, (str, int, float, bool)) and not (isinstance(value, str) and len(value) > 250):
             entities.append(RawSensor(coordinator, ref))
 
     async_add_entities(entities)
+
+
+def _wh_to_kwh(value: Any) -> float | None:
+    return float(value) / 1000 if isinstance(value, (int, float)) else None
 
 
 def _num(value: Any) -> float | None:

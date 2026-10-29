@@ -35,6 +35,8 @@ async def async_setup_entry(
         "custom.waterFilter", "waterFilterStatus"
     ):
         entities.append(WaterFilterReplace(coordinator))
+    if status.components_with("samsungce.softwareUpdate", "newVersionAvailable"):
+        entities.append(SoftwareUpdate(coordinator))
     if status.components_with("refrigeration", "defrost"):
         entities.append(Defrosting(coordinator))
     async_add_entities(entities)
@@ -159,3 +161,20 @@ class Defrosting(FrostboxEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         comps = self.coordinator.data.components_with("refrigeration", "defrost")
         return self.coordinator.is_on((comps[0], "refrigeration", "defrost")) if comps else None
+
+
+class SoftwareUpdate(FrostboxEntity, BinarySensorEntity):
+    """Samsung firmware waiting; install it from the fridge (Frostbox never installs firmware)."""
+
+    _attr_name = "Software update available"
+    _attr_device_class = BinarySensorDeviceClass.UPDATE
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: FrostboxCoordinator) -> None:
+        super().__init__(coordinator, "software_update")
+
+    @property
+    def is_on(self) -> bool | None:
+        comp = self.coordinator.data.components_with("samsungce.softwareUpdate", "newVersionAvailable")[0]
+        value = self.coordinator.data.value(comp, "samsungce.softwareUpdate", "newVersionAvailable")
+        return None if value is None else bool(value)

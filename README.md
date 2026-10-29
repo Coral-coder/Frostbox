@@ -31,7 +31,7 @@ and on the Family Hub screen itself.
 
 | Area | Entities / features |
 | --- | --- |
-| **Fridge** | Fridge / freezer / FlexZone temperatures and setpoints, FlexZone mode (Deli, Wine, Beverage…), Power Cool, Power Freeze, ice maker and Ice Bites switches, water filter %, deodorizer filter, power and energy (Energy dashboard ready), defrost, connectivity |
+| **Fridge** | AutoFill pitcher, Auto Open Door, door alarm, AI precise cooling, ice maker night mode, defrost delay, ice maker status, monthly energy, firmware-update flag, *take inside photos* button. Fridge / freezer / FlexZone temperatures and setpoints, FlexZone mode (Deli, Wine, Beverage…), Power Cool, Power Freeze, ice maker and Ice Bites switches, water filter %, deodorizer filter, power and energy (Energy dashboard ready), defrost, connectivity |
 | **Doors** | Per-door contact sensors, *any door open*, **door ajar** (configurable delay), openings today, open time today, last opened, `frostbox_door` events |
 | **Food safety** | `sensor.*_food_safety` = `ok / warning / unsafe` using USDA rules (fridge > 40 °F for 4 h, freezer thawed). Tracks outages, **including time when HA itself was down**. Stays `unsafe` until you acknowledge it and tells you what to throw out |
 | **Inventory** | `todo.*_inventory`: every item is a to-do whose due date is its expiry date. Barcode lookup (Open Food Facts), automatic shelf life by category, leftovers, staples that re-add themselves to your shopping list, *expiring soon* / *expired* sensors |

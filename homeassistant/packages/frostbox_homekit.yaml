@@ -31,6 +31,9 @@ homekit:
         - switch.family_hub_party_mode
         - switch.family_hub_grocery_mode
         - switch.family_hub_vacation_mode
+        - switch.family_hub_autofill_pitcher
+        - switch.family_hub_auto_open_door
+        - switch.family_hub_ice_maker_night_mode
         - button.family_hub_dinner_ready
         - button.family_hub_start_screensaver
     entity_config:
@@ -58,6 +61,12 @@ homekit:
         name: Fridge Grocery Mode
       switch.family_hub_vacation_mode:
         name: Fridge Vacation Mode
+      switch.family_hub_autofill_pitcher:
+        name: AutoFill Pitcher
+      switch.family_hub_auto_open_door:
+        name: Fridge Auto Open
+      switch.family_hub_ice_maker_night_mode:
+        name: Ice Maker Night Mode
       button.family_hub_dinner_ready:
         name: Dinner Ready
       button.family_hub_start_screensaver:
