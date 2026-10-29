@@ -274,3 +274,11 @@ async def test_dump_capabilities_includes_definitions(hass: HomeAssistant, setup
     assert "error" in dump["definitions"]["custom.waterFilter"]
     assert dump["definitions"]["samsungce.powerCool"]["id"] == "samsungce.powerCool"
     assert dump["disabled_capabilities"]["main"] == ["samsungce.meatAging"]
+    summary = resp["summary"]
+    assert summary["samsungce.fridgeVacationMode"] == {
+        "values": {"main": {"vacationMode": "off"}},
+        "commands": {"setVacationMode": "mode: on|off"},
+    }
+    assert "samsungce.meatAging" not in summary  # unavailable on this model
+    assert "samsungce.weightMeasurement" not in summary  # scale component is disabled
+    assert "contactSensor" not in summary  # already mapped

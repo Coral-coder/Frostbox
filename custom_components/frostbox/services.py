@@ -21,6 +21,7 @@ from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
 from .api import SmartThingsError
+from .capability_summary import summarize
 from .const import (
     COMPONENT_FREEZER,
     COMPONENT_FRIDGE,
@@ -385,6 +386,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             "disabled_components": dump["disabled_components"],
             "capabilities": sorted(versions),
             "definitions_fetched": sum(1 for d in definitions.values() if "error" not in d),
+            # Copy this block from the response to map new features.
+            "summary": summarize(parsed, definitions),
         }
 
     reg = hass.services.async_register

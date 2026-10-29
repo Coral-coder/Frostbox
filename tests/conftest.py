@@ -80,7 +80,14 @@ class FakeSmartThings:
             from custom_components.frostbox.api import SmartThingsError
 
             raise SmartThingsError("HTTP 403")
-        return {"id": capability_id, "version": version, "attributes": {}, "commands": {}}
+        commands = {}
+        if capability_id == "samsungce.fridgeVacationMode":
+            commands = {
+                "setVacationMode": {
+                    "arguments": [{"name": "mode", "schema": {"type": "string", "enum": ["on", "off"]}}]
+                }
+            }
+        return {"id": capability_id, "version": version, "attributes": {}, "commands": commands}
 
     async def fetch_binary(self, url, token=None):
         return b"\xff\xd8fake-jpeg\xff\xd9"
