@@ -7,9 +7,11 @@ it out.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
@@ -18,6 +20,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 import voluptuous as vol
 
+from .api import SmartThingsError
 from .const import (
     COMPONENT_FREEZER,
     COMPONENT_FRIDGE,
@@ -34,6 +37,7 @@ from .const import (
 )
 from .lookups import lookup_barcode, recipes_for
 from .shelf_life import BY_KEY
+from .status import FridgeStatus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -348,11 +352,40 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         coord = entry.runtime_data.coordinator
         device = await coord.api.get_device(coord.device_id)
         status = await coord.api.get_status(coord.device_id)
-        dump = {"device": device, "status": status}
+        versions: dict[str, int] = {}
+        for comp in device.get("components", []):
+            for cap in comp.get("capabilities", []):
+                versions[cap["id"]] = cap.get("version", 1)
+
+        # Fetch each capability's definition so new controls can be built without guessing.
+        sem = asyncio.Semaphore(4)
+        definitions: dict[str, Any] = {}
+
+        async def _definition(cap_id: str, version: int) -> None:
+            async with sem:
+                try:
+                    definitions[cap_id] = await coord.api.get_capability(cap_id, version)
+                except SmartThingsError as err:
+                    definitions[cap_id] = {"error": str(err)}
+
+        await asyncio.gather(*(_definition(c, v) for c, v in versions.items()))
+        parsed = FridgeStatus(status)
+        dump = {
+            "device": device,
+            "status": status,
+            "disabled_components": sorted(parsed.disabled_components()),
+            "disabled_capabilities": {c: sorted(parsed.disabled_capabilities(c)) for c in status},
+            "definitions": definitions,
+        }
         path = Path(hass.config.path("frostbox_capabilities.json"))
         await hass.async_add_executor_job(path.write_text, json.dumps(dump, indent=2, default=str))
-        caps = sorted({cap["id"] for comp in device.get("components", []) for cap in comp.get("capabilities", [])})
-        return {"path": str(path), "components": list(status), "capabilities": caps}
+        return {
+            "path": str(path),
+            "components": list(status),
+            "disabled_components": dump["disabled_components"],
+            "capabilities": sorted(versions),
+            "definitions_fetched": sum(1 for d in definitions.values() if "error" not in d),
+        }
 
     reg = hass.services.async_register
     reg(DOMAIN, "add_item", add_item, ADD_SCHEMA, SupportsResponse.OPTIONAL)

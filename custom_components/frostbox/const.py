@@ -60,8 +60,13 @@ COMPONENT_NAMES: Final = {
     "onedoor": "Door",
     "icemaker": "Ice maker",
     "icemaker-02": "Ice Bites maker",
-    "pantry-01": "Pantry",
+    "icemaker-03": "Ice maker 3",
+    "pantry-01": "Pantry 1",
     "pantry-02": "Pantry 2",
+    "scale-10": "Scale 1",
+    "scale-11": "Scale 2",
+    "camera-01": "Camera",
+    "curdmaker": "Curd maker",
 }
 
 # Food safety thresholds (USDA guidance), in Fahrenheit

@@ -152,6 +152,40 @@
     }
    ],
    "categories": []
+  },
+  {
+   "id": "curdmaker",
+   "capabilities": [
+    {
+     "id": "switch",
+     "version": 1
+    },
+    {
+     "id": "temperatureMeasurement",
+     "version": 1
+    }
+   ],
+   "categories": []
+  },
+  {
+   "id": "scale-10",
+   "capabilities": [
+    {
+     "id": "samsungce.weightMeasurement",
+     "version": 1
+    }
+   ],
+   "categories": []
+  },
+  {
+   "id": "icemaker-03",
+   "capabilities": [
+    {
+     "id": "switch",
+     "version": 1
+    }
+   ],
+   "categories": []
   }
  ]
 }

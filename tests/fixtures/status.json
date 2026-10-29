@@ -119,6 +119,34 @@
      "value": [],
      "timestamp": "2026-10-27T12:00:00.000Z"
     }
+   },
+   "custom.disabledComponents": {
+    "disabledComponents": {
+     "value": [
+      "curdmaker",
+      "scale-10",
+      "scale-11"
+     ],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "samsungce.unavailableCapabilities": {
+    "unavailableCommands": {
+     "value": [],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    },
+    "unavailableCapabilities": {
+     "value": [
+      "samsungce.meatAging"
+     ],
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "samsungce.meatAging": {
+    "status": {
+     "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
    }
   },
   "cooler": {
@@ -243,6 +271,38 @@
    "switch": {
     "switch": {
      "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   }
+  },
+  "curdmaker": {
+   "switch": {
+    "switch": {
+     "value": "off",
+     "timestamp": "2026-10-27T12:00:00.000Z"
+    }
+   },
+   "temperatureMeasurement": {
+    "temperature": {
+     "value": 100,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "F"
+    }
+   }
+  },
+  "scale-10": {
+   "samsungce.weightMeasurement": {
+    "weight": {
+     "value": 0,
+     "timestamp": "2026-10-27T12:00:00.000Z",
+     "unit": "g"
+    }
+   }
+  },
+  "icemaker-03": {
+   "switch": {
+    "switch": {
+     "value": "on",
      "timestamp": "2026-10-27T12:00:00.000Z"
     }
    }

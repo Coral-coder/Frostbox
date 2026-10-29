@@ -75,6 +75,13 @@ class FakeSmartThings:
         self.virtual[dev_id] = {"label": name, "switch": "off"}
         return {"deviceId": dev_id}
 
+    async def get_capability(self, capability_id, version=1):
+        if capability_id.startswith("custom."):
+            from custom_components.frostbox.api import SmartThingsError
+
+            raise SmartThingsError("HTTP 403")
+        return {"id": capability_id, "version": version, "attributes": {}, "commands": {}}
+
     async def fetch_binary(self, url, token=None):
         return b"\xff\xd8fake-jpeg\xff\xd9"
 

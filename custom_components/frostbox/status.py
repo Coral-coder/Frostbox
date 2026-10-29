@@ -48,12 +48,37 @@ class FridgeStatus:
             return True
         return attribute in cap
 
+    def disabled_components(self) -> set[str]:
+        """Components Samsung ships but switches off on this model (e.g. regional features)."""
+        value = self.value("main", "custom.disabledComponents", "disabledComponents")
+        return {str(v) for v in value} if isinstance(value, list) else set()
+
     def disabled_capabilities(self, component: str) -> set[str]:
+        disabled: set[str] = set()
         value = self.value(component, "custom.disabledCapabilities", "disabledCapabilities")
-        return set(value) if isinstance(value, list) else set()
+        if isinstance(value, list):
+            disabled.update(str(v) for v in value)
+        # samsungce.unavailableCapabilities: lists of capability ids (or dicts naming them).
+        for attrs in (self.raw.get(component, {}).get("samsungce.unavailableCapabilities") or {}).values():
+            items = (attrs or {}).get("value")
+            if not isinstance(items, list):
+                continue
+            for item in items:
+                if isinstance(item, str):
+                    disabled.add(item)
+                elif isinstance(item, dict) and isinstance(item.get("capability"), str):
+                    disabled.add(item["capability"])
+        return disabled
+
+    def component_enabled(self, component: str) -> bool:
+        return component in self.raw and component not in self.disabled_components()
 
     def supports(self, component: str, capability: str, attribute: str | None = None) -> bool:
-        return self.has(component, capability, attribute) and capability not in self.disabled_capabilities(component)
+        return (
+            self.component_enabled(component)
+            and self.has(component, capability, attribute)
+            and capability not in self.disabled_capabilities(component)
+        )
 
     def _attr(self, component: str, capability: str, attribute: str) -> dict[str, Any]:
         return self.raw.get(component, {}).get(capability, {}).get(attribute) or {}
@@ -71,8 +96,14 @@ class FridgeStatus:
         return [c for c in self.raw if self.supports(c, capability, attribute)]
 
     def iter_attributes(self) -> Iterator[tuple[AttributeRef, Any]]:
+        """Every attribute of enabled components and capabilities."""
         for component, caps in self.raw.items():
+            if not self.component_enabled(component):
+                continue
+            disabled = self.disabled_capabilities(component)
             for capability, attrs in (caps or {}).items():
+                if capability in disabled:
+                    continue
                 for attribute, data in (attrs or {}).items():
                     yield AttributeRef(component, capability, attribute), (data or {}).get("value")
 

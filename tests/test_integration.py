@@ -253,3 +253,24 @@ async def test_screensaver_entities_and_pages(hass: HomeAssistant, setup_fridge,
         resp = await client.get(f"/frostbox/{page}.html")
         assert resp.status == 200, page
         assert marker in await resp.text()
+
+
+async def test_disabled_components_are_skipped(hass: HomeAssistant, setup_fridge) -> None:
+    """Samsung ships regional features switched off; Frostbox must not expose them."""
+    reg = er.async_get(hass)
+    ids = {e.unique_id for e in er.async_entries_for_config_entry(reg, setup_fridge.entry_id)}
+    assert f"{FRIDGE}_icemaker-03_switch" in ids
+    assert not any("curdmaker" in i or "scale-10" in i or "meatAging" in i for i in ids)
+
+
+async def test_dump_capabilities_includes_definitions(hass: HomeAssistant, setup_fridge) -> None:
+    resp = await hass.services.async_call(DOMAIN, "dump_capabilities", {}, blocking=True, return_response=True)
+    assert resp["disabled_components"] == ["curdmaker", "scale-10", "scale-11"]
+    assert resp["definitions_fetched"] > 0
+    import json
+    from pathlib import Path
+
+    dump = json.loads(await hass.async_add_executor_job(Path(resp["path"]).read_text))
+    assert "error" in dump["definitions"]["custom.waterFilter"]
+    assert dump["definitions"]["samsungce.powerCool"]["id"] == "samsungce.powerCool"
+    assert dump["disabled_capabilities"]["main"] == ["samsungce.meatAging"]

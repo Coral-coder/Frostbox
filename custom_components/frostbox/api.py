@@ -70,6 +70,10 @@ class SmartThingsApi:
     async def get_device(self, device_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/devices/{device_id}")
 
+    async def get_capability(self, capability_id: str, version: int = 1) -> dict[str, Any]:
+        """Capability definition: attribute schemas and commands with arguments."""
+        return await self._request("GET", f"/capabilities/{capability_id}/{version}")
+
     async def get_status(self, device_id: str) -> dict[str, Any]:
         """Return ``{component: {capability: {attribute: {value, unit, timestamp}}}}``."""
         data = await self._request("GET", f"/devices/{device_id}/status")

@@ -52,7 +52,14 @@ MAPPED: set[tuple[str, str]] = {
     ("refrigeration", "defrost"),
     ("switch", "switch"),
 }
-SKIP_CAPABILITIES = {"execute", "refresh", "custom.disabledCapabilities", "healthCheck"}
+SKIP_CAPABILITIES = {
+    "execute",
+    "refresh",
+    "healthCheck",
+    "custom.disabledCapabilities",
+    "custom.disabledComponents",
+    "samsungce.unavailableCapabilities",
+}
 
 
 async def async_setup_entry(
